@@ -22,6 +22,7 @@ import membersRoutes from './routes/members';
 import ssoRoutes from './routes/sso';
 import caddyRoutes from './routes/caddy';
 import settingsRoutes, { brandingRouter } from './routes/settings';
+import monitoringRoutes from './routes/monitoring';
 import { setupTerminalWs } from './routes/terminal';
 
 const app = express();
@@ -117,6 +118,7 @@ app.use('/api/admin/settings', settingsRoutes);
 app.use('/api/branding', brandingRouter);
 app.use('/api/members', membersRoutes);
 app.use('/api/sso', ssoRoutes);
+app.use('/api/monitoring', monitoringRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));

@@ -34,4 +34,5 @@ export const availableIcons = [
   'i-carbon-activity',
   'i-carbon-chart-line',
   'i-carbon-server-proxy',
+  'i-carbon-network-4',
 ]

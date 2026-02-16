@@ -27,6 +27,7 @@ const pageTitle = computed(() => {
     'admin-system': '系統設定',
     'admin-email-template': '信件模板',
     'admin-audit': '稽核紀錄',
+    'admin-monitoring': '節點管理',
   }
   return titles[name] || 'Lab Portal'
 })

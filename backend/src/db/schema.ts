@@ -103,7 +103,38 @@ function initSchema(db: Database.Database) {
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
+
+    CREATE TABLE IF NOT EXISTS monitor_nodes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      hostname TEXT UNIQUE NOT NULL,
+      token TEXT UNIQUE NOT NULL,
+      ip TEXT NOT NULL DEFAULT '',
+      capabilities_json TEXT NOT NULL DEFAULT '{}',
+      config_json TEXT NOT NULL DEFAULT '{}',
+      config_version INTEGER NOT NULL DEFAULT 0,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      is_active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      last_seen_at TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS monitor_snapshots (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      node_id INTEGER NOT NULL REFERENCES monitor_nodes(id),
+      snapshot_json TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(node_id)
+    );
   `);
+
+  // Migrations: add columns if missing (for existing DBs)
+  const cols = db.prepare("PRAGMA table_info(monitor_nodes)").all() as { name: string }[];
+  if (!cols.find(c => c.name === 'config_version')) {
+    db.exec("ALTER TABLE monitor_nodes ADD COLUMN config_version INTEGER NOT NULL DEFAULT 0");
+  }
+  if (!cols.find(c => c.name === 'sort_order')) {
+    db.exec("ALTER TABLE monitor_nodes ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0");
+  }
 
   // Seed default admin if no users exist
   const count = db.prepare('SELECT COUNT(*) as cnt FROM users').get() as { cnt: number };

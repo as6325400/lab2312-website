@@ -108,6 +108,12 @@ const router = createRouter({
           component: () => import('../pages/admin/AuditPage.vue'),
           meta: { requiresAdmin: true },
         },
+        {
+          path: 'admin/monitoring',
+          name: 'admin-monitoring',
+          component: () => import('../pages/admin/MonitoringNodesPage.vue'),
+          meta: { requiresAdmin: true },
+        },
       ],
     },
   ],

@@ -44,6 +44,7 @@ const adminNav = [
   { label: 'Proxy 管理', to: '/admin/caddy', icon: 'i-carbon-cloud-app' },
   { label: '信件模板', to: '/admin/email-template', icon: 'i-carbon-email-new' },
   { label: '使用者管理', to: '/admin/users', icon: 'i-carbon-group' },
+  { label: '節點管理', to: '/admin/monitoring', icon: 'i-carbon-network-4' },
   { label: '系統設定', to: '/admin/system', icon: 'i-carbon-settings' },
   { label: '稽核紀錄', to: '/admin/audit', icon: 'i-carbon-catalog' },
 ]
