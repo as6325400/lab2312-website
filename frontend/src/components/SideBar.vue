@@ -97,7 +97,18 @@ const isActive = (path: string) => {
             <span :class="item.icon" class="text-lg" />
             {{ item.label }}
           </a>
-          <!-- Normal route link -->
+          <!-- External link -->
+          <a
+            v-else-if="item.to.startsWith('http://') || item.to.startsWith('https://')"
+            :href="item.to"
+            target="_blank"
+            rel="noopener"
+            class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+          >
+            <span :class="item.icon" class="text-lg" />
+            {{ item.label }}
+          </a>
+          <!-- Internal route link -->
           <router-link
             v-else-if="item.to !== 'vpn'"
             :to="item.to"

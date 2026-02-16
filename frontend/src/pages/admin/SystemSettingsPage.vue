@@ -214,7 +214,7 @@ async function save() {
       <div class="text-sm font-medium text-gray-500 uppercase tracking-wider pt-2">側邊欄導航</div>
 
       <div class="card space-y-3">
-        <p class="text-xs text-gray-400">設定左側導航選單項目。路徑填 <code class="bg-gray-100 px-1 rounded">vpn</code> 代表 VPN SSO 連結。</p>
+        <p class="text-xs text-gray-400">設定左側導航選單項目。路徑填 <code class="bg-gray-100 px-1 rounded">vpn</code> 代表 VPN SSO 連結；填 <code class="bg-gray-100 px-1 rounded">https://...</code> 會以新分頁開啟外部連結。</p>
         <div
           v-for="(item, i) in navItems"
           :key="i"
