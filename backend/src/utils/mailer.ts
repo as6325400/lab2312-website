@@ -68,3 +68,36 @@ export async function sendApproveEmail(opts: {
     text: body,
   });
 }
+
+export async function sendRegistrationNotifyEmail(opts: {
+  name: string;
+  email: string;
+  username: string;
+  studentId: string;
+}): Promise<void> {
+  const db = getDb();
+  const row = db.prepare("SELECT value FROM settings WHERE key = 'registration_notify_email'").get() as { value: string } | undefined;
+
+  if (!row) throw new Error('Registration notification email template not found');
+
+  const template = JSON.parse(row.value) as { subject: string; body: string };
+  const siteUrl = process.env.SITE_URL || process.env.FRONTEND_URL || 'http://localhost:5173';
+
+  const { subject, body } = renderTemplate(template, {
+    name: opts.name,
+    email: opts.email,
+    username: opts.username,
+    studentId: opts.studentId || '(未填)',
+    url: siteUrl,
+  });
+
+  const from = process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@lab.local';
+
+  const transport = getTransporter();
+  await transport.sendMail({
+    from,
+    to: from,
+    subject,
+    text: body,
+  });
+}

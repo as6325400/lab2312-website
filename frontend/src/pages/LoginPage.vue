@@ -64,6 +64,12 @@ async function handleLogin() {
           {{ loading ? '登入中...' : '登入' }}
         </button>
       </form>
+
+      <div class="text-center mt-4">
+        <router-link to="/about" class="text-sm text-primary-500 hover:text-primary-700">
+          尚未有帳號？
+        </router-link>
+      </div>
     </div>
   </div>
 </template>

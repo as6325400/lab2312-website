@@ -148,4 +148,52 @@ Lab 管理員`,
     ).run(docId, '# Welcome to Lab\n\nThis is the lab guide. An admin can edit this page.', 1);
     db.prepare('UPDATE docs SET current_version_id = ? WHERE id = ?').run(ver.lastInsertRowid, docId);
   }
+
+  // Seed default about page if not exists
+  const aboutDoc = db.prepare('SELECT id FROM docs WHERE slug = ?').get('about');
+  if (!aboutDoc) {
+    const result = db.prepare(
+      `INSERT INTO docs (slug, title) VALUES (?, ?)`
+    ).run('about', '關於我們');
+    const docId = result.lastInsertRowid;
+    const ver = db.prepare(
+      `INSERT INTO doc_versions (doc_id, content_markdown, created_by) VALUES (?, ?, ?)`
+    ).run(docId, `# 關於我們
+
+我們是**國立清華大學資訊工程學系 王俊堯教授實驗室**。
+
+此為實驗室內部網站，提供 Lab 成員使用各項服務。
+
+## 如何加入？
+
+若您為實驗室成員，請聯絡管理員申請帳號。
+
+📧 管理員信箱：admin@lab2312.cs.nthu.edu.tw
+`, 1);
+    db.prepare('UPDATE docs SET current_version_id = ? WHERE id = ?').run(ver.lastInsertRowid, docId);
+  }
+
+  // Seed registration notification email template
+  const regNotifyTpl = db.prepare("SELECT key FROM settings WHERE key = 'registration_notify_email'").get();
+  if (!regNotifyTpl) {
+    db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run(
+      'registration_notify_email',
+      JSON.stringify({
+        subject: '新註冊申請 - {{username}}',
+        body: `管理員您好，
+
+有一位新的使用者提交了帳號申請：
+
+- 姓名：{{name}}
+- Email：{{email}}
+- 希望帳號：{{username}}
+- 學號：{{studentId}}
+
+請登入管理後台審核此申請：
+{{url}}/admin/requests
+
+Lab Portal 系統`,
+      }),
+    );
+  }
 }

@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
 import { getDb } from '../db/schema';
 import { requireAdmin } from '../middlewares/auth';
-import { sendApproveEmail } from '../utils/mailer';
+import { sendApproveEmail, sendRegistrationNotifyEmail } from '../utils/mailer';
 import { createIpaUser } from '../utils/freeipa';
 
 function generatePassword(length = 16): string {
@@ -57,7 +57,7 @@ router.get('/validate', (req: Request, res: Response) => {
 });
 
 // POST /api/register - Submit registration (public with valid token)
-router.post('/', (req: Request, res: Response) => {
+router.post('/', async (req: Request, res: Response) => {
   const { token, name, email, username, studentId } = req.body;
 
   if (!token || !name || !email || !username) {
@@ -107,6 +107,13 @@ router.post('/', (req: Request, res: Response) => {
   db.prepare(
     'INSERT INTO audit_logs (actor_user_id, action, detail_json, ip) VALUES (?, ?, ?, ?)'
   ).run(null, 'register_request', JSON.stringify({ requestId: result.lastInsertRowid, username }), req.ip);
+
+  // 通知管理員有新申請
+  try {
+    await sendRegistrationNotifyEmail({ name, email, username, studentId: studentId || '' });
+  } catch (err: any) {
+    console.error('Send registration notify email failed:', err.message);
+  }
 
   return res.json({ ok: true, id: result.lastInsertRowid });
 });

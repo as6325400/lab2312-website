@@ -4,6 +4,31 @@ import { requireAuth, requireAdmin } from '../middlewares/auth';
 
 const router = Router();
 
+// GET /api/docs/public/:slug - Public doc view (no auth, whitelist only)
+const PUBLIC_SLUGS: string[] = ['about'];
+
+router.get('/public/:slug', (req: Request, res: Response) => {
+  const slug = req.params.slug as string;
+
+  if (!PUBLIC_SLUGS.includes(slug)) {
+    return res.status(403).json({ error: 'This document is not publicly accessible' });
+  }
+
+  const db = getDb();
+  const doc = db.prepare(
+    `SELECT d.id, d.slug, d.title, dv.content_markdown, dv.created_at as updated_at
+     FROM docs d
+     LEFT JOIN doc_versions dv ON dv.id = d.current_version_id
+     WHERE d.slug = ?`
+  ).get(slug) as any;
+
+  if (!doc) {
+    return res.status(404).json({ error: 'Document not found' });
+  }
+
+  return res.json(doc);
+});
+
 // GET /api/docs/:slug - Public doc view (requires auth)
 router.get('/:slug', requireAuth, (req: Request, res: Response) => {
   const db = getDb();

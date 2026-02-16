@@ -32,7 +32,7 @@ onMounted(fetchMembers)
 
 <template>
   <div class="max-w-4xl mx-auto space-y-6">
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
       <h2 class="text-lg font-semibold text-gray-800">成員名冊</h2>
       <span v-if="!loading" class="text-sm text-gray-500">共 {{ members.length }} 人</span>
     </div>
@@ -45,8 +45,8 @@ onMounted(fetchMembers)
     />
 
     <div v-if="loading" class="text-center text-gray-500 py-8">載入中...</div>
-    <div v-else class="card !p-0 overflow-hidden">
-      <table class="w-full text-sm">
+    <div v-else class="card !p-0 overflow-hidden overflow-x-auto">
+      <table class="w-full text-sm min-w-[480px]">
         <thead class="bg-gray-50 text-gray-600 text-left">
           <tr>
             <th class="px-4 py-3 font-medium">帳號</th>

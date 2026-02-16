@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import SideBar from './SideBar.vue'
 
 const auth = useAuthStore()
 const route = useRoute()
+const sidebarOpen = ref(false)
 
 const pageTitle = computed(() => {
   const name = route.name as string
@@ -25,13 +26,22 @@ const pageTitle = computed(() => {
 
 <template>
   <div class="flex h-screen bg-gray-50">
-    <SideBar />
+    <SideBar v-model="sidebarOpen" />
     <div class="flex-1 flex flex-col overflow-hidden">
       <!-- Header -->
-      <header class="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-6 shrink-0">
-        <h1 class="text-lg font-semibold text-gray-800">{{ pageTitle }}</h1>
+      <header class="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-4 md:px-6 shrink-0">
+        <div class="flex items-center gap-3">
+          <!-- Hamburger (mobile only) -->
+          <button
+            class="md:hidden p-1.5 -ml-1.5 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+            @click="sidebarOpen = true"
+          >
+            <span class="i-carbon-menu text-xl" />
+          </button>
+          <h1 class="text-lg font-semibold text-gray-800">{{ pageTitle }}</h1>
+        </div>
         <div class="flex items-center gap-3 text-sm text-gray-600">
-          <span>{{ auth.user?.displayName || auth.username }}</span>
+          <span class="hidden sm:inline">{{ auth.user?.displayName || auth.username }}</span>
           <button
             @click="auth.logout().then(() => $router.push('/login'))"
             class="btn-secondary text-sm !py-1 !px-3"
@@ -41,7 +51,7 @@ const pageTitle = computed(() => {
         </div>
       </header>
       <!-- Main Content -->
-      <main class="flex-1 overflow-auto p-6">
+      <main class="flex-1 overflow-auto p-4 md:p-6">
         <router-view />
       </main>
     </div>

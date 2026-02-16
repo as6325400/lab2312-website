@@ -60,8 +60,8 @@ onMounted(fetchUsers)
     </div>
 
     <div v-if="loading" class="text-center text-gray-500 py-8">載入中...</div>
-    <div v-else class="card !p-0 overflow-hidden">
-      <table class="w-full text-sm">
+    <div v-else class="card !p-0 overflow-hidden overflow-x-auto">
+      <table class="w-full text-sm min-w-[700px]">
         <thead class="bg-gray-50 text-gray-600 text-left">
           <tr>
             <th class="px-4 py-3 font-medium">帳號</th>

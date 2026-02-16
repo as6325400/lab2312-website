@@ -67,7 +67,7 @@ onMounted(fetchInvites)
 
 <template>
   <div class="max-w-4xl mx-auto space-y-6">
-    <div class="flex justify-between items-center">
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
       <h2 class="text-lg font-semibold text-gray-800">邀請連結管理</h2>
       <button @click="showCreate = !showCreate" class="btn-primary">
         {{ showCreate ? '取消' : '建立邀請' }}
@@ -77,7 +77,7 @@ onMounted(fetchInvites)
     <!-- Create form -->
     <div v-if="showCreate" class="card">
       <form @submit.prevent="createInvite" class="space-y-4">
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">有效時間（分鐘）</label>
             <input v-model.number="form.expiresMinutes" type="number" min="1" class="input-field" />
@@ -104,13 +104,13 @@ onMounted(fetchInvites)
     </div>
     <div v-else class="space-y-3">
       <div v-for="invite in invites" :key="invite.id" class="card !p-4">
-        <div class="flex items-start justify-between gap-4">
+        <div class="flex flex-col sm:flex-row items-start justify-between gap-3">
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 mb-1">
-              <code class="text-sm bg-gray-100 px-2 py-0.5 rounded truncate block max-w-md">{{ invite.token }}</code>
-              <span class="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded">有效</span>
+              <code class="text-sm bg-gray-100 px-2 py-0.5 rounded truncate block max-w-[200px] sm:max-w-md">{{ invite.token }}</code>
+              <span class="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded whitespace-nowrap">有效</span>
             </div>
-            <div class="text-sm text-gray-500 space-x-4">
+            <div class="text-sm text-gray-500 flex flex-wrap gap-x-4 gap-y-1">
               <span>使用: {{ invite.used_count }}/{{ invite.max_uses }}</span>
               <span>到期: {{ new Date(invite.expires_at).toLocaleString() }}</span>
               <span v-if="invite.note">備註: {{ invite.note }}</span>

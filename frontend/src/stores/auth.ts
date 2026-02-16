@@ -5,9 +5,11 @@ import api from '../composables/useApi'
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<any>(null)
   const loading = ref(true)
+  const viewAsUser = ref(false)
 
   const isAuthenticated = computed(() => !!user.value)
-  const isAdmin = computed(() => user.value?.role === 'admin')
+  const isRealAdmin = computed(() => user.value?.role === 'admin')
+  const isAdmin = computed(() => isRealAdmin.value && !viewAsUser.value)
   const username = computed(() => user.value?.username || '')
 
   async function fetchMe() {
@@ -36,5 +38,5 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null
   }
 
-  return { user, loading, isAuthenticated, isAdmin, username, fetchMe, login, logout }
+  return { user, loading, isAuthenticated, isAdmin, isRealAdmin, viewAsUser, username, fetchMe, login, logout }
 })

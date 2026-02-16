@@ -214,7 +214,7 @@ onMounted(fetchRules)
 <template>
   <div class="max-w-5xl mx-auto space-y-4">
     <!-- Header + Tabs -->
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
       <h2 class="text-lg font-semibold text-gray-800">Proxy 管理</h2>
       <div class="flex gap-1 bg-gray-100 rounded-lg p-1">
         <button
@@ -237,7 +237,7 @@ onMounted(fetchRules)
     <!-- ═══ Tab 1: Proxy Rules ═══ -->
     <template v-if="activeTab === 'rules'">
       <!-- Stats -->
-      <div class="grid grid-cols-3 gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div class="card text-center">
           <div class="text-2xl font-bold text-gray-800">{{ totalCount }}</div>
           <div class="text-sm text-gray-500">總規則數</div>
@@ -295,8 +295,8 @@ onMounted(fetchRules)
         尚無 Proxy 規則。點擊「新增規則」開始設定。
       </div>
 
-      <div v-else class="card !p-0 overflow-hidden">
-        <table class="w-full text-sm">
+      <div v-else class="card !p-0 overflow-hidden overflow-x-auto">
+        <table class="w-full text-sm min-w-[600px]">
           <thead class="bg-gray-50 text-gray-600 text-left">
             <tr>
               <th class="px-4 py-3 font-medium">Domain</th>
@@ -364,9 +364,9 @@ onMounted(fetchRules)
       </div>
 
       <!-- Buttons -->
-      <div class="flex justify-between items-center">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <span class="text-sm font-medium text-gray-700 font-mono">Caddyfile</span>
-        <div class="flex gap-2">
+        <div class="flex flex-wrap gap-2">
           <button @click="fmt" class="btn-secondary text-sm" :disabled="formatting">
             {{ formatting ? '格式化中...' : '格式化' }}
           </button>

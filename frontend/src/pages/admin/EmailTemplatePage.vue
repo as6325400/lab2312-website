@@ -89,7 +89,7 @@ onMounted(fetchTemplate)
 
 <template>
   <div class="max-w-3xl mx-auto space-y-6">
-    <div class="flex justify-between items-center">
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
       <h2 class="text-lg font-semibold text-gray-800">審核通過信件模板</h2>
       <button @click="save" class="btn-primary text-sm" :disabled="saving">
         {{ saving ? '儲存中...' : '儲存' }}
@@ -141,7 +141,7 @@ onMounted(fetchTemplate)
       <div class="card">
         <div class="text-sm font-medium text-gray-700 mb-3">測試寄信</div>
         <p class="text-xs text-gray-400 mb-3">使用範例資料填入模板並寄出測試信，主旨會加上 [測試] 前綴。</p>
-        <div class="flex gap-2">
+        <div class="flex flex-col sm:flex-row gap-2">
           <input
             v-model="testEmail"
             type="email"

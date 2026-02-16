@@ -1,11 +1,15 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useBrandingStore } from '../stores/branding'
 import api from '../composables/useApi'
 
+const props = defineProps<{ modelValue: boolean }>()
+const emit = defineEmits<{ 'update:modelValue': [value: boolean] }>()
+
 const route = useRoute()
+const router = useRouter()
 const auth = useAuthStore()
 const branding = useBrandingStore()
 
@@ -15,11 +19,21 @@ onMounted(() => {
   if (!branding.loaded) branding.fetch()
 })
 
+// Close sidebar on route change (mobile)
+router.afterEach(() => {
+  emit('update:modelValue', false)
+})
+
 async function openVpn() {
+  // Open window synchronously to avoid popup blocker on mobile
+  const win = window.open('', '_blank')
   try {
     const { data } = await api.post('/sso/token')
-    window.open(`${VPN_URL}/api/sso/callback?token=${encodeURIComponent(data.token)}`, '_blank')
+    if (win) {
+      win.location.href = `${VPN_URL}/api/sso/callback?token=${encodeURIComponent(data.token)}`
+    }
   } catch {
+    win?.close()
     alert('無法產生 SSO token')
   }
 }
@@ -55,7 +69,22 @@ const isActive = (path: string) => {
 </script>
 
 <template>
-  <aside class="w-56 bg-white border-r border-gray-200 flex flex-col shrink-0">
+  <!-- Backdrop (mobile only) -->
+  <Teleport to="body">
+    <transition name="fade">
+      <div
+        v-if="modelValue"
+        class="fixed inset-0 bg-black/40 z-40 md:hidden"
+        @click="emit('update:modelValue', false)"
+      />
+    </transition>
+  </Teleport>
+
+  <!-- Sidebar -->
+  <aside
+    class="fixed inset-y-0 left-0 z-50 w-56 bg-white border-r border-gray-200 flex flex-col shrink-0 transform transition-transform duration-200 ease-in-out md:relative md:z-auto md:translate-x-0"
+    :class="modelValue ? 'translate-x-0' : '-translate-x-full'"
+  >
     <!-- Logo -->
     <div class="h-14 flex items-center px-4 border-b border-gray-200">
       <div class="flex items-center gap-2">
@@ -126,9 +155,22 @@ const isActive = (path: string) => {
         </div>
         <div class="flex-1 min-w-0">
           <div class="text-sm text-gray-800 truncate">{{ auth.username }}</div>
-          <div class="text-xs text-gray-400">{{ auth.isAdmin ? 'Admin' : 'User' }}</div>
+          <div class="text-xs" :class="auth.viewAsUser ? 'text-amber-500' : 'text-gray-400'">
+            {{ auth.viewAsUser ? 'User (預覽中)' : auth.isAdmin ? 'Admin' : 'User' }}
+          </div>
         </div>
       </div>
+      <!-- View as user toggle (real admins only) -->
+      <button
+        v-if="auth.isRealAdmin"
+        @click="auth.viewAsUser = !auth.viewAsUser"
+        class="w-full text-center text-xs rounded py-1.5 transition-colors"
+        :class="auth.viewAsUser
+          ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+          : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'"
+      >
+        {{ auth.viewAsUser ? '返回管理員視角' : '切換使用者視角' }}
+      </button>
       <div class="flex gap-1">
         <router-link
           to="/change-password"
@@ -146,3 +188,14 @@ const isActive = (path: string) => {
     </div>
   </aside>
 </template>
+
+<style scoped>
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+</style>

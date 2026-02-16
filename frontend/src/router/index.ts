@@ -17,6 +17,11 @@ const router = createRouter({
       meta: { guest: true },
     },
     {
+      path: '/about',
+      name: 'about',
+      component: () => import('../pages/AboutPage.vue'),
+    },
+    {
       path: '/',
       component: () => import('../components/AppLayout.vue'),
       meta: { requiresAuth: true },
