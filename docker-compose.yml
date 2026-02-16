@@ -1,0 +1,65 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    env_file: ./backend/.env
+    environment:
+      # Docker-specific overrides (覆蓋 backend/.env 的值)
+      - PORT=3000
+      - NODE_ENV=production
+      - UPLOAD_DIR=/data/uploads
+      - BASTION_HOST=host.docker.internal
+      - BASTION_PRIVATE_KEY_PATH=/keys/bastion_key
+      - FRONTEND_URL=https://${DASHBOARD_DOMAIN}
+      - SITE_URL=https://${DASHBOARD_DOMAIN}
+      - DASHBOARD_DOMAIN=${DASHBOARD_DOMAIN}
+      - CADDY_CONF_DIR=/data/caddy
+      - CADDY_CONTAINER_NAME=lab-caddy
+      - COOKIE_SECURE=true
+      - DB_PATH=/data/portal.db
+    volumes:
+      - ./volume/db:/data
+      - ./volume/uploads:/data/uploads
+      - ./docker/caddy-conf:/data/caddy
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${BASTION_KEY_PATH:-/etc/lab-portal/bastion_key}:/keys/bastion_key:ro
+      # PAM/SSSD: mount host auth files and SSSD socket
+      - /etc/passwd:/etc/passwd:ro
+      - /etc/group:/etc/group:ro
+      - /etc/shadow:/etc/shadow:ro
+      - /var/lib/sss/pipes/:/var/lib/sss/pipes/
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+      - "ipa.lab2312.cs.nthu.edu.tw:192.168.10.101"
+    restart: unless-stopped
+
+  caddy:
+    container_name: lab-caddy
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend
+      args:
+        - VITE_VPN_URL=${VPN_URL}
+    environment:
+      - DASHBOARD_DOMAIN=${DASHBOARD_DOMAIN}
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - ./docker/caddy-conf:/etc/caddy
+      - ./volume/caddy-data:/data
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  # Optional: LDAP for development
+  # ldap:
+  #   image: osixia/openldap:1.5.0
+  #   environment:
+  #     LDAP_ORGANISATION: "Lab"
+  #     LDAP_DOMAIN: "example.com"
+  #     LDAP_ADMIN_PASSWORD: "admin"
+  #   ports:
+  #     - "389:389"
+

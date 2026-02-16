@@ -1,0 +1,36 @@
+{
+	# Managed by Lab Portal
+}
+
+{$DASHBOARD_DOMAIN} {
+	# API proxy
+	handle /api/* {
+		reverse_proxy backend:3000
+	}
+
+	# WebSocket proxy
+	handle /ws/* {
+		reverse_proxy backend:3000
+	}
+
+	# Uploads
+	handle /uploads/* {
+		reverse_proxy backend:3000
+	}
+
+	# Frontend SPA (fallback)
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+
+	# Security headers
+	header {
+		X-Frame-Options SAMEORIGIN
+		X-Content-Type-Options nosniff
+		X-XSS-Protection "1; mode=block"
+	}
+
+	encode gzip
+}

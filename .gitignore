@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.env
+*.db
+uploads/*
+!uploads/.gitkeep
+.DS_Store
+*.log
+volume/
+**/.vscode
+claude.md
+.claude
