@@ -90,7 +90,7 @@ router.post('/report', requireNodeToken, (req: Request, res: Response) => {
 router.get('/nodes', requireAuth, (_req: Request, res: Response) => {
   const db = getDb();
   // Build a nodeId → sort_order map for ordering
-  const rows = db.prepare('SELECT id, sort_order FROM monitor_nodes WHERE is_active = 1').all() as { id: number; sort_order: number }[];
+  const rows = db.prepare('SELECT id, sort_order FROM monitor_nodes').all() as { id: number; sort_order: number }[];
   const orderMap = new Map(rows.map(r => [r.id, r.sort_order]));
 
   const nodes = getAll();

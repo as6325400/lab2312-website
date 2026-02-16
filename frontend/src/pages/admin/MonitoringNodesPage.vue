@@ -211,9 +211,10 @@ async function moveNode(index: number, direction: -1 | 1) {
   const targetIndex = index + direction
   if (targetIndex < 0 || targetIndex >= nodes.value.length) return
   // Swap in local array
-  const temp = nodes.value[index]
-  nodes.value[index] = nodes.value[targetIndex]
-  nodes.value[targetIndex] = temp
+  const a = nodes.value[index]!
+  const b = nodes.value[targetIndex]!
+  nodes.value[index] = b
+  nodes.value[targetIndex] = a
   // Save new order to backend
   const nodeIds = nodes.value.map(n => n.id)
   try {

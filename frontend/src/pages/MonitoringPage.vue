@@ -124,7 +124,7 @@ function networkChartData(nh: NodeHistory) {
   if (nics.length > 0 && raw.nicRxHistories?.length > 0) {
     const datasets: any[] = []
     nics.forEach((nic, i) => {
-      const colors = NIC_COLORS[i % NIC_COLORS.length]
+      const colors = NIC_COLORS[i % NIC_COLORS.length]!
       const rxHist = raw.nicRxHistories[i] || []
       const txHist = raw.nicTxHistories[i] || []
       datasets.push({
