@@ -46,11 +46,24 @@ brandingRouter.get('/', (_req: Request, res: Response) => {
   const nameRow = db.prepare("SELECT value FROM settings WHERE key = 'site_name'").get() as { value: string } | undefined;
   const logoRow = db.prepare("SELECT value FROM settings WHERE key = 'site_logo'").get() as { value: string } | undefined;
   const faviconRow = db.prepare("SELECT value FROM settings WHERE key = 'site_favicon'").get() as { value: string } | undefined;
+  const navRow = db.prepare("SELECT value FROM settings WHERE key = 'sidebar_nav'").get() as { value: string } | undefined;
+
+  let sidebarNav = [
+    { label: 'Lab 使用教學', to: '/docs/lab-guide', icon: 'i-carbon-document' },
+    { label: 'Terminal', to: '/terminal', icon: 'i-carbon-terminal' },
+    { label: 'Monitoring', to: '/monitoring', icon: 'i-carbon-dashboard' },
+    { label: '成員名冊', to: '/members', icon: 'i-carbon-group' },
+    { label: 'VPN 管理', to: 'vpn', icon: 'i-carbon-vpn' },
+  ];
+  if (navRow?.value) {
+    try { sidebarNav = JSON.parse(navRow.value); } catch {}
+  }
 
   return res.json({
     siteName: nameRow?.value || 'Lab Portal',
     siteLogo: logoRow?.value || '',
     siteFavicon: faviconRow?.value || '',
+    sidebarNav,
   });
 });
 

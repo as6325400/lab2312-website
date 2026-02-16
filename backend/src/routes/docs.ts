@@ -4,6 +4,13 @@ import { requireAuth, requireAdmin } from '../middlewares/auth';
 
 const router = Router();
 
+// GET /api/docs/list - List all docs (slug + title)
+router.get('/list', requireAuth, (_req: Request, res: Response) => {
+  const db = getDb();
+  const docs = db.prepare('SELECT slug, title FROM docs ORDER BY id').all();
+  return res.json(docs);
+});
+
 // GET /api/docs/public/:slug - Public doc view (no auth, whitelist only)
 const PUBLIC_SLUGS: string[] = ['about'];
 

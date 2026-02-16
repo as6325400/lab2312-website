@@ -186,6 +186,19 @@ Lab 管理員`,
     }
   }
 
+  // Seed default sidebar navigation
+  const sidebarNav = db.prepare("SELECT key FROM settings WHERE key = 'sidebar_nav'").get();
+  if (!sidebarNav) {
+    const defaultNav = [
+      { label: 'Lab 使用教學', to: '/docs/lab-guide', icon: 'i-carbon-document' },
+      { label: 'Terminal', to: '/terminal', icon: 'i-carbon-terminal' },
+      { label: 'Monitoring', to: '/monitoring', icon: 'i-carbon-dashboard' },
+      { label: '成員名冊', to: '/members', icon: 'i-carbon-group' },
+      { label: 'VPN 管理', to: 'vpn', icon: 'i-carbon-vpn' },
+    ];
+    db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run('sidebar_nav', JSON.stringify(defaultNav));
+  }
+
   // Seed registration notification email template
   const regNotifyTpl = db.prepare("SELECT key FROM settings WHERE key = 'registration_notify_email'").get();
   if (!regNotifyTpl) {

@@ -4,10 +4,7 @@ import MarkdownIt from 'markdown-it'
 import api from '../../composables/useApi'
 
 const slug = ref('lab-guide')
-const docOptions = [
-  { slug: 'lab-guide', label: 'Lab 使用教學' },
-  { slug: 'about', label: '關於我們（About Page）' },
-]
+const docOptions = ref<{ slug: string; title: string }[]>([])
 const title = ref('')
 const markdown = ref('')
 const loading = ref(true)
@@ -97,7 +94,13 @@ async function uploadFile(file: File) {
   }
 }
 
-onMounted(fetchDoc)
+onMounted(async () => {
+  try {
+    const { data } = await api.get('/docs/list')
+    docOptions.value = data
+  } catch {}
+  fetchDoc()
+})
 </script>
 
 <template>
@@ -107,7 +110,7 @@ onMounted(fetchDoc)
         <h2 class="text-lg font-semibold text-gray-800">編輯文件</h2>
         <select v-model="slug" @change="fetchDoc" class="input-field !w-auto text-sm">
           <option v-for="opt in docOptions" :key="opt.slug" :value="opt.slug">
-            {{ opt.label }}
+            {{ opt.title }}
           </option>
         </select>
       </div>

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import api from '../../composables/useApi'
-import { useBrandingStore } from '../../stores/branding'
+import { useBrandingStore, type NavItem } from '../../stores/branding'
+import { availableIcons } from '../../constants/icons'
 
 const branding = useBrandingStore()
 
@@ -19,6 +20,9 @@ const sessionTimeout = ref(20)
 const terminalIdleTimeout = ref(30)
 const terminalMaxSessions = ref(2)
 
+// Sidebar Nav
+const navItems = ref<NavItem[]>([])
+
 const loading = ref(true)
 const saving = ref(false)
 const message = ref('')
@@ -33,6 +37,9 @@ onMounted(async () => {
     siteName.value = brandingRes.data.siteName || 'Lab Portal'
     siteLogo.value = brandingRes.data.siteLogo || ''
     siteFavicon.value = brandingRes.data.siteFavicon || ''
+    if (Array.isArray(brandingRes.data.sidebarNav)) {
+      navItems.value = brandingRes.data.sidebarNav.map((n: NavItem) => ({ ...n }))
+    }
     sessionTimeout.value = parseInt(systemRes.data.session_timeout_minutes) || 20
     terminalIdleTimeout.value = parseInt(systemRes.data.terminal_idle_timeout_minutes) || 30
     terminalMaxSessions.value = parseInt(systemRes.data.terminal_max_sessions) || 2
@@ -43,6 +50,21 @@ onMounted(async () => {
     loading.value = false
   }
 })
+
+function addNavItem() {
+  navItems.value.push({ label: '', to: '', icon: 'i-carbon-link' })
+}
+
+function removeNavItem(index: number) {
+  navItems.value.splice(index, 1)
+}
+
+function moveNavItem(index: number, direction: -1 | 1) {
+  const target = index + direction
+  if (target < 0 || target >= navItems.value.length) return
+  const removed = navItems.value.splice(index, 1)[0]!
+  navItems.value.splice(target, 0, removed)
+}
 
 async function uploadImage(e: Event, target: 'logo' | 'favicon') {
   const file = (e.target as HTMLInputElement).files?.[0]
@@ -83,8 +105,10 @@ async function save() {
       api.put('/admin/settings/session_timeout_minutes', { value: String(sessionTimeout.value) }),
       api.put('/admin/settings/terminal_idle_timeout_minutes', { value: String(terminalIdleTimeout.value) }),
       api.put('/admin/settings/terminal_max_sessions', { value: String(terminalMaxSessions.value) }),
+      api.put('/admin/settings/sidebar_nav', { value: JSON.stringify(navItems.value) }),
     ])
     branding.update(siteName.value, siteLogo.value, siteFavicon.value)
+    branding.sidebarNav = navItems.value.map(n => ({ ...n }))
     message.value = '儲存成功'
     messageType.value = 'success'
   } catch (err: any) {
@@ -184,6 +208,52 @@ async function save() {
           </label>
           <span class="text-xs text-gray-400">建議 32x32 或 64x64 的 PNG/ICO/SVG。</span>
         </div>
+      </div>
+
+      <!-- 側邊欄導航 -->
+      <div class="text-sm font-medium text-gray-500 uppercase tracking-wider pt-2">側邊欄導航</div>
+
+      <div class="card space-y-3">
+        <p class="text-xs text-gray-400">設定左側導航選單項目。路徑填 <code class="bg-gray-100 px-1 rounded">vpn</code> 代表 VPN SSO 連結。</p>
+        <div
+          v-for="(item, i) in navItems"
+          :key="i"
+          class="flex items-center gap-2 p-2 bg-gray-50 rounded-lg"
+        >
+          <div class="flex flex-col gap-0.5">
+            <button
+              @click="moveNavItem(i, -1)"
+              :disabled="i === 0"
+              class="text-gray-400 hover:text-gray-600 disabled:opacity-30 text-xs leading-none"
+            >&uarr;</button>
+            <button
+              @click="moveNavItem(i, 1)"
+              :disabled="i === navItems.length - 1"
+              class="text-gray-400 hover:text-gray-600 disabled:opacity-30 text-xs leading-none"
+            >&darr;</button>
+          </div>
+          <input
+            v-model="item.label"
+            type="text"
+            class="input-field !py-1 text-sm flex-1"
+            placeholder="標籤"
+          />
+          <input
+            v-model="item.to"
+            type="text"
+            class="input-field !py-1 text-sm flex-1"
+            placeholder="路徑（如 /terminal）"
+          />
+          <select v-model="item.icon" class="input-field !py-1 text-sm w-40">
+            <option v-for="ic in availableIcons" :key="ic" :value="ic">{{ ic.replace('i-carbon-', '') }}</option>
+          </select>
+          <span :class="item.icon" class="text-lg text-gray-500 shrink-0 w-5" />
+          <button
+            @click="removeNavItem(i)"
+            class="text-red-400 hover:text-red-600 shrink-0 text-sm"
+          >&times;</button>
+        </div>
+        <button @click="addNavItem" class="btn-secondary text-sm">+ 新增項目</button>
       </div>
 
       <!-- 系統參數 -->

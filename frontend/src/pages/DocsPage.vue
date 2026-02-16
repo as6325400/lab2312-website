@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, inject, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import MarkdownIt from 'markdown-it'
 import api from '../composables/useApi'
 
 const route = useRoute()
+const setPageTitle = inject<(t: string) => void>('setPageTitle', () => {})
 const content = ref('')
 const title = ref('')
 const loading = ref(true)
@@ -23,6 +24,7 @@ async function fetchDoc() {
     const slug = route.params.slug as string
     const { data } = await api.get(`/docs/${slug}`)
     title.value = data.title
+    setPageTitle(data.title || '')
     content.value = data.content_markdown || ''
   } catch (e: any) {
     error.value = e.response?.data?.error || '載入失敗'

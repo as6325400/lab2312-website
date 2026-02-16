@@ -1,7 +1,9 @@
 import { defineConfig, presetUno, presetIcons } from 'unocss'
 import transformerDirectives from '@unocss/transformer-directives'
+import { availableIcons } from './src/constants/icons'
 
 export default defineConfig({
+  safelist: availableIcons,
   presets: [
     presetUno(),
     presetIcons({

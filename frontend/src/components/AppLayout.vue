@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, provide } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import SideBar from './SideBar.vue'
@@ -8,17 +8,24 @@ const auth = useAuthStore()
 const route = useRoute()
 const sidebarOpen = ref(false)
 
+// Allow child pages to set a dynamic title (e.g., DocsPage)
+const dynamicTitle = ref('')
+provide('setPageTitle', (title: string) => { dynamicTitle.value = title })
+
 const pageTitle = computed(() => {
   const name = route.name as string
+  if (name === 'docs') return dynamicTitle.value || 'Lab Portal'
   const titles: Record<string, string> = {
-    'docs': 'Lab 使用教學',
     'terminal': 'Terminal',
     'monitoring': 'Monitoring',
+    'members': '成員名冊',
+    'change-password': '變更密碼',
     'admin-invites': '邀請管理',
     'admin-requests': '註冊審核',
     'admin-docs': '文件編輯',
     'admin-users': '使用者管理',
     'admin-system': '系統設定',
+    'admin-email-template': '信件模板',
     'admin-audit': '稽核紀錄',
   }
   return titles[name] || 'Lab Portal'

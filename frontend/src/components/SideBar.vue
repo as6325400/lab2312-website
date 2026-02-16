@@ -25,7 +25,6 @@ router.afterEach(() => {
 })
 
 async function openVpn() {
-  // Open window synchronously to avoid popup blocker on mobile
   const win = window.open('', '_blank')
   try {
     const { data } = await api.post('/sso/token')
@@ -38,21 +37,7 @@ async function openVpn() {
   }
 }
 
-interface NavItem {
-  label: string
-  to: string
-  icon: string
-  adminOnly?: boolean
-}
-
-const mainNav: NavItem[] = [
-  { label: 'Lab 教學', to: '/docs/lab-guide', icon: 'i-carbon-document' },
-  { label: 'Terminal', to: '/terminal', icon: 'i-carbon-terminal' },
-  { label: 'Monitoring', to: '/monitoring', icon: 'i-carbon-dashboard' },
-  { label: '成員名冊', to: '/members', icon: 'i-carbon-group' },
-]
-
-const adminNav: NavItem[] = [
+const adminNav = [
   { label: '邀請管理', to: '/admin/invites', icon: 'i-carbon-email' },
   { label: '註冊審核', to: '/admin/requests', icon: 'i-carbon-user-follow' },
   { label: '文件編輯', to: '/admin/docs', icon: 'i-carbon-edit' },
@@ -101,8 +86,20 @@ const isActive = (path: string) => {
     <!-- Navigation -->
     <nav class="flex-1 py-4 overflow-y-auto">
       <ul class="space-y-1 px-2">
-        <li v-for="item in mainNav" :key="item.to">
+        <li v-for="item in branding.sidebarNav" :key="item.to">
+          <!-- VPN: special SSO handler -->
+          <a
+            v-if="item.to === 'vpn' && VPN_URL"
+            href="#"
+            @click.prevent="openVpn"
+            class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+          >
+            <span :class="item.icon" class="text-lg" />
+            {{ item.label }}
+          </a>
+          <!-- Normal route link -->
           <router-link
+            v-else-if="item.to !== 'vpn'"
             :to="item.to"
             class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors"
             :class="isActive(item.to)
@@ -112,16 +109,6 @@ const isActive = (path: string) => {
             <span :class="item.icon" class="text-lg" />
             {{ item.label }}
           </router-link>
-        </li>
-        <li v-if="VPN_URL">
-          <a
-            href="#"
-            @click.prevent="openVpn"
-            class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-          >
-            <span class="i-carbon-vpn text-lg" />
-            VPN 管理
-          </a>
         </li>
       </ul>
 
