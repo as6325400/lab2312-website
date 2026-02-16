@@ -31,7 +31,7 @@ services:
       - /var/lib/sss/pipes/:/var/lib/sss/pipes/
     extra_hosts:
       - "host.docker.internal:host-gateway"
-      - "ipa.lab2312.cs.nthu.edu.tw:192.168.10.101"
+      # - "ipa.example.com:192.168.x.x"  # FreeIPA host resolution
     restart: unless-stopped
 
   caddy:

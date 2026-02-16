@@ -59,7 +59,7 @@ const adminNav: NavItem[] = [
   { label: 'Proxy 管理', to: '/admin/caddy', icon: 'i-carbon-cloud-app' },
   { label: '信件模板', to: '/admin/email-template', icon: 'i-carbon-email-new' },
   { label: '使用者管理', to: '/admin/users', icon: 'i-carbon-group' },
-  { label: '網站品牌', to: '/admin/branding', icon: 'i-carbon-paint-brush' },
+  { label: '系統設定', to: '/admin/system', icon: 'i-carbon-settings' },
   { label: '稽核紀錄', to: '/admin/audit', icon: 'i-carbon-catalog' },
 ]
 

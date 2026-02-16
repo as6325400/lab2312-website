@@ -8,7 +8,7 @@ const router = Router();
 
 const CADDY_CONF_DIR = process.env.CADDY_CONF_DIR || '/etc/caddy';
 const CADDY_CONTAINER = process.env.CADDY_CONTAINER_NAME || 'lab-caddy';
-const DASHBOARD_DOMAIN = process.env.DASHBOARD_DOMAIN || 'bastion.lab2312.cs.nthu.edu.tw';
+const DASHBOARD_DOMAIN = process.env.DASHBOARD_DOMAIN || 'dashboard.example.com';
 // Caddyfile 中使用環境變數語法，讓 domain 統一由 .env 控制
 const CADDYFILE_DOMAIN = '{$DASHBOARD_DOMAIN}';
 

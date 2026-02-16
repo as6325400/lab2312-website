@@ -94,8 +94,12 @@ const router = createRouter({
         },
         {
           path: 'admin/branding',
-          name: 'admin-branding',
-          component: () => import('../pages/admin/BrandingPage.vue'),
+          redirect: '/admin/system',
+        },
+        {
+          path: 'admin/system',
+          name: 'admin-system',
+          component: () => import('../pages/admin/SystemSettingsPage.vue'),
           meta: { requiresAdmin: true },
         },
         {

@@ -267,7 +267,7 @@ onMounted(fetchRules)
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Domain</label>
               <input v-model="form.domain" type="text" class="input-field font-mono text-sm"
-                placeholder="gitlab.lab2312.cs.nthu.edu.tw" required />
+                placeholder="gitlab.example.com" required />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Target (IP:Port)</label>

@@ -146,10 +146,10 @@ cp backend/.env.example backend/.env
 
 | 變數 | 說明 | 範例 |
 |------|------|------|
-| `DASHBOARD_DOMAIN` | 網站域名 | `bastion.lab2312.cs.nthu.edu.tw` |
+| `DASHBOARD_DOMAIN` | 網站域名 | `dashboard.example.com` |
 | `HTTP_PORT` | HTTP port | `80` |
 | `HTTPS_PORT` | HTTPS port | `443` |
-| `VPN_URL` | VPN Portal URL（SSO 跳轉用） | `https://wg.lab2312.cs.nthu.edu.tw` |
+| `VPN_URL` | VPN Portal URL（SSO 跳轉用） | `https://vpn.example.com` |
 | `BASTION_KEY_PATH` | Host 上的 SSH private key 路徑 | `/etc/lab-portal/bastion_key` |
 
 #### `backend/.env`

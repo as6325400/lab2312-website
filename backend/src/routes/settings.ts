@@ -2,8 +2,28 @@ import { Router, Request, Response } from 'express';
 import nodemailer from 'nodemailer';
 import { getDb } from '../db/schema';
 import { requireAdmin } from '../middlewares/auth';
+import { invalidateSettingCache } from '../utils/settings';
 
 const router = Router();
+
+// GET /api/admin/settings/system — batch fetch system settings
+router.get('/system', requireAdmin, (_req: Request, res: Response) => {
+  const db = getDb();
+  const keys = ['session_timeout_minutes', 'terminal_idle_timeout_minutes', 'terminal_max_sessions'];
+  const defaults: Record<string, string> = {
+    session_timeout_minutes: '20',
+    terminal_idle_timeout_minutes: '30',
+    terminal_max_sessions: '2',
+  };
+
+  const result: Record<string, string> = {};
+  for (const key of keys) {
+    const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key) as { value: string } | undefined;
+    result[key] = row?.value ?? defaults[key];
+  }
+
+  return res.json(result);
+});
 
 // GET /api/admin/settings/:key
 router.get('/:key', requireAdmin, (req: Request, res: Response) => {
@@ -25,10 +45,12 @@ brandingRouter.get('/', (_req: Request, res: Response) => {
   const db = getDb();
   const nameRow = db.prepare("SELECT value FROM settings WHERE key = 'site_name'").get() as { value: string } | undefined;
   const logoRow = db.prepare("SELECT value FROM settings WHERE key = 'site_logo'").get() as { value: string } | undefined;
+  const faviconRow = db.prepare("SELECT value FROM settings WHERE key = 'site_favicon'").get() as { value: string } | undefined;
 
   return res.json({
     siteName: nameRow?.value || 'Lab Portal',
     siteLogo: logoRow?.value || '',
+    siteFavicon: faviconRow?.value || '',
   });
 });
 
@@ -45,6 +67,9 @@ router.put('/:key', requireAdmin, (req: Request, res: Response) => {
   db.prepare(
     'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = ?'
   ).run(key, value, value);
+
+  // Invalidate cache so the new value takes effect immediately
+  invalidateSettingCache(key);
 
   // Audit
   db.prepare(

@@ -18,6 +18,7 @@ const pageTitle = computed(() => {
     'admin-requests': '註冊審核',
     'admin-docs': '文件編輯',
     'admin-users': '使用者管理',
+    'admin-system': '系統設定',
     'admin-audit': '稽核紀錄',
   }
   return titles[name] || 'Lab Portal'

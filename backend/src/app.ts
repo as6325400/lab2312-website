@@ -70,6 +70,16 @@ const sessionParser = session({
 });
 app.use(sessionParser);
 
+// Dynamic session timeout: override maxAge from DB setting on each request
+import { getNumericSetting } from './utils/settings';
+app.use((req, _res, next) => {
+  if (req.session && req.session.cookie) {
+    const timeoutMinutes = getNumericSetting('session_timeout_minutes', 20);
+    req.session.cookie.maxAge = timeoutMinutes * 60 * 1000;
+  }
+  next();
+});
+
 // Rate limiting
 import rateLimit from 'express-rate-limit';
 const isPrivateIp = (ip: string) => {

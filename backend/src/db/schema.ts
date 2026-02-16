@@ -168,9 +168,22 @@ Lab 管理員`,
 
 若您為實驗室成員，請聯絡管理員申請帳號。
 
-📧 管理員信箱：admin@lab2312.cs.nthu.edu.tw
+📧 管理員信箱：admin@example.com
 `, 1);
     db.prepare('UPDATE docs SET current_version_id = ? WHERE id = ?').run(ver.lastInsertRowid, docId);
+  }
+
+  // Seed default system settings
+  const systemDefaults = [
+    { key: 'session_timeout_minutes', value: '20' },
+    { key: 'terminal_idle_timeout_minutes', value: '30' },
+    { key: 'terminal_max_sessions', value: '2' },
+  ];
+  for (const { key, value } of systemDefaults) {
+    const existing = db.prepare("SELECT key FROM settings WHERE key = ?").get(key);
+    if (!existing) {
+      db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run(key, value);
+    }
   }
 
   // Seed registration notification email template

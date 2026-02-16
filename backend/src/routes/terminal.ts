@@ -3,6 +3,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { Client as SSHClient } from 'ssh2';
 import { IncomingMessage } from 'http';
 import { getDb } from '../db/schema';
+import { getNumericSetting } from '../utils/settings';
 import fs from 'fs';
 
 interface TerminalSession {
@@ -15,8 +16,6 @@ interface TerminalSession {
 
 const activeSessions = new Map<WebSocket, TerminalSession>();
 const userSessionCount = new Map<number, number>();
-const MAX_SESSIONS_PER_USER = 2;
-const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
 export function setupTerminalWs(server: HttpServer, sessionParser: any) {
   const wss = new WebSocketServer({ noServer: true });
@@ -49,7 +48,8 @@ export function setupTerminalWs(server: HttpServer, sessionParser: any) {
 
     // Check session limit
     const count = userSessionCount.get(userId) || 0;
-    if (count >= MAX_SESSIONS_PER_USER) {
+    const maxSessions = getNumericSetting('terminal_max_sessions', 2);
+    if (count >= maxSessions) {
       ws.send(JSON.stringify({ type: 'error', message: 'Maximum terminal sessions reached' }));
       ws.close();
       return;
@@ -65,12 +65,13 @@ export function setupTerminalWs(server: HttpServer, sessionParser: any) {
     const ssh = new SSHClient();
     let idleTimer: NodeJS.Timeout | null = null;
 
+    const idleTimeoutMs = getNumericSetting('terminal_idle_timeout_minutes', 30) * 60 * 1000;
     const resetIdleTimer = () => {
       if (idleTimer) clearTimeout(idleTimer);
       idleTimer = setTimeout(() => {
         ws.send('\r\n[Session timed out due to inactivity]\r\n');
         ws.close();
-      }, IDLE_TIMEOUT_MS);
+      }, idleTimeoutMs);
     };
 
     const sshConfig: any = {
