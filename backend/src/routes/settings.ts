@@ -9,11 +9,12 @@ const router = Router();
 // GET /api/admin/settings/system — batch fetch system settings
 router.get('/system', requireAdmin, (_req: Request, res: Response) => {
   const db = getDb();
-  const keys = ['session_timeout_minutes', 'terminal_idle_timeout_minutes', 'terminal_max_sessions'];
+  const keys = ['session_timeout_minutes', 'terminal_idle_timeout_minutes', 'terminal_max_sessions', 'admin_notify_email'];
   const defaults: Record<string, string> = {
     session_timeout_minutes: '20',
     terminal_idle_timeout_minutes: '30',
     terminal_max_sessions: '2',
+    admin_notify_email: '',
   };
 
   const result: Record<string, string> = {};

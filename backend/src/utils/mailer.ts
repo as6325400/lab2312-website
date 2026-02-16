@@ -93,10 +93,14 @@ export async function sendRegistrationNotifyEmail(opts: {
 
   const from = process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@lab.local';
 
+  // 寄到管理員設定的通知信箱，若未設定則寄到寄件者自己
+  const notifyRow = db.prepare("SELECT value FROM settings WHERE key = 'admin_notify_email'").get() as { value: string } | undefined;
+  const to = (notifyRow?.value || '').trim() || from;
+
   const transport = getTransporter();
   await transport.sendMail({
     from,
-    to: from,
+    to,
     subject,
     text: body,
   });

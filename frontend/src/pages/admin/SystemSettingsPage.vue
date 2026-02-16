@@ -19,6 +19,7 @@ const faviconInput = ref<HTMLInputElement>()
 const sessionTimeout = ref(20)
 const terminalIdleTimeout = ref(30)
 const terminalMaxSessions = ref(2)
+const adminNotifyEmail = ref('')
 
 // Sidebar Nav
 const navItems = ref<NavItem[]>([])
@@ -43,6 +44,7 @@ onMounted(async () => {
     sessionTimeout.value = parseInt(systemRes.data.session_timeout_minutes) || 20
     terminalIdleTimeout.value = parseInt(systemRes.data.terminal_idle_timeout_minutes) || 30
     terminalMaxSessions.value = parseInt(systemRes.data.terminal_max_sessions) || 2
+    adminNotifyEmail.value = systemRes.data.admin_notify_email || ''
   } catch {
     message.value = '載入設定失敗'
     messageType.value = 'error'
@@ -106,6 +108,7 @@ async function save() {
       api.put('/admin/settings/terminal_idle_timeout_minutes', { value: String(terminalIdleTimeout.value) }),
       api.put('/admin/settings/terminal_max_sessions', { value: String(terminalMaxSessions.value) }),
       api.put('/admin/settings/sidebar_nav', { value: JSON.stringify(navItems.value) }),
+      api.put('/admin/settings/admin_notify_email', { value: adminNotifyEmail.value }),
     ])
     branding.update(siteName.value, siteLogo.value, siteFavicon.value)
     branding.sidebarNav = navItems.value.map(n => ({ ...n }))
@@ -294,6 +297,17 @@ async function save() {
             class="input-field"
           />
           <p class="text-xs text-gray-400 mt-1">每位使用者同時可開啟的 Terminal 最大數量。預設 2。</p>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">管理員通知信箱</label>
+          <input
+            v-model="adminNotifyEmail"
+            type="email"
+            class="input-field"
+            placeholder="admin@example.com"
+          />
+          <p class="text-xs text-gray-400 mt-1">有新註冊申請時通知此信箱。留空則寄到 SMTP 寄件帳號。</p>
         </div>
       </div>
     </template>
