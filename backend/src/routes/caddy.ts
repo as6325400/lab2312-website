@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { requireAdmin } from '../middlewares/auth';
 import { getDb } from '../db/schema';
+import { generateCaddyfile, validateDomain, validateTarget, type ProxyRule } from '../utils/caddyfile';
 import fs from 'fs';
 import path from 'path';
 
@@ -9,8 +10,6 @@ const router = Router();
 const CADDY_CONF_DIR = process.env.CADDY_CONF_DIR || '/etc/caddy';
 const CADDY_CONTAINER = process.env.CADDY_CONTAINER_NAME || 'lab-caddy';
 const DASHBOARD_DOMAIN = process.env.DASHBOARD_DOMAIN || 'dashboard.example.com';
-// Caddyfile 中使用環境變數語法，讓 domain 統一由 .env 控制
-const CADDYFILE_DOMAIN = '{$DASHBOARD_DOMAIN}';
 
 // Docker exec helper — 透過 Docker socket 在 caddy container 執行指令
 async function caddyExec(cmd: string[]): Promise<{ exitCode: number; output: string }> {
@@ -48,62 +47,9 @@ async function caddyExec(cmd: string[]): Promise<{ exitCode: number; output: str
   });
 }
 
-// ── Caddyfile 生成 ──────────────────────────────────────────
-
-function generateCaddyfile(rules: any[]): string {
-  let caddyfile = `{
-\t# Managed by Lab Portal
-}\n\n`;
-
-  // Dashboard site block
-  caddyfile += `${CADDYFILE_DOMAIN} {
-\t# API proxy
-\thandle /api/* {
-\t\treverse_proxy backend:3000
-\t}
-
-\t# WebSocket proxy
-\thandle /ws/* {
-\t\treverse_proxy backend:3000
-\t}
-
-\t# Uploads
-\thandle /uploads/* {
-\t\treverse_proxy backend:3000
-\t}
-
-\t# Frontend SPA (fallback)
-\thandle {
-\t\troot * /srv
-\t\ttry_files {path} /index.html
-\t\tfile_server
-\t}
-
-\t# Security headers
-\theader {
-\t\tX-Frame-Options SAMEORIGIN
-\t\tX-Content-Type-Options nosniff
-\t\tX-XSS-Protection "1; mode=block"
-\t}
-
-\tencode gzip
-}\n`;
-
-  // User-defined proxy rules (enabled only)
-  const enabledRules = rules.filter((r: any) => r.is_enabled);
-  for (const rule of enabledRules) {
-    caddyfile += `\n# ${rule.description || rule.domain}\n`;
-    caddyfile += `${rule.domain} {\n`;
-    caddyfile += `\treverse_proxy ${rule.target}\n`;
-    caddyfile += `}\n`;
-  }
-
-  return caddyfile;
-}
-
 async function regenerateAndReload(): Promise<{ success: boolean; output: string }> {
   const db = getDb();
-  const rules = db.prepare('SELECT * FROM proxy_rules ORDER BY domain ASC').all();
+  const rules = db.prepare('SELECT * FROM proxy_rules ORDER BY domain ASC').all() as ProxyRule[];
   const content = generateCaddyfile(rules);
 
   // Write Caddyfile
@@ -143,21 +89,10 @@ router.get('/rules', requireAdmin, (_req: Request, res: Response) => {
 router.post('/rules', requireAdmin, async (req: Request, res: Response) => {
   const { domain, target, description = '' } = req.body;
 
-  if (!domain || typeof domain !== 'string') {
-    return res.status(400).json({ error: 'domain 為必填' });
-  }
-  if (!target || typeof target !== 'string') {
-    return res.status(400).json({ error: 'target 為必填' });
-  }
-  if (!/^[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?$/.test(domain)) {
-    return res.status(400).json({ error: '無效的域名格式' });
-  }
-  if (!/^[\w.-]+:\d+$/.test(target)) {
-    return res.status(400).json({ error: 'target 格式須為 host:port' });
-  }
-  if (domain.toLowerCase() === DASHBOARD_DOMAIN.toLowerCase()) {
-    return res.status(400).json({ error: '不可覆蓋 Dashboard 域名' });
-  }
+  const domainErr = validateDomain(domain, DASHBOARD_DOMAIN);
+  if (domainErr) return res.status(400).json({ error: domainErr });
+  const targetErr = validateTarget(target);
+  if (targetErr) return res.status(400).json({ error: targetErr });
 
   const db = getDb();
   const existing = db.prepare('SELECT id FROM proxy_rules WHERE domain = ?').get(domain);
@@ -195,12 +130,8 @@ router.put('/rules/:id', requireAdmin, async (req: Request, res: Response) => {
   const values: any[] = [];
 
   if (domain !== undefined) {
-    if (!/^[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?$/.test(domain)) {
-      return res.status(400).json({ error: '無效的域名格式' });
-    }
-    if (domain.toLowerCase() === DASHBOARD_DOMAIN.toLowerCase()) {
-      return res.status(400).json({ error: '不可覆蓋 Dashboard 域名' });
-    }
+    const domainErr2 = validateDomain(domain, DASHBOARD_DOMAIN);
+    if (domainErr2) return res.status(400).json({ error: domainErr2 });
     const dup = db.prepare('SELECT id FROM proxy_rules WHERE domain = ? AND id != ?').get(domain, req.params.id);
     if (dup) {
       return res.status(409).json({ error: '此域名已存在' });
@@ -209,9 +140,8 @@ router.put('/rules/:id', requireAdmin, async (req: Request, res: Response) => {
     values.push(domain);
   }
   if (target !== undefined) {
-    if (!/^[\w.-]+:\d+$/.test(target)) {
-      return res.status(400).json({ error: 'target 格式須為 host:port' });
-    }
+    const targetErr2 = validateTarget(target);
+    if (targetErr2) return res.status(400).json({ error: targetErr2 });
     updates.push('target = ?');
     values.push(target);
   }

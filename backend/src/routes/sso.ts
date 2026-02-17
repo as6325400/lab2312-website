@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
-import crypto from 'crypto';
 import { requireAuth } from '../middlewares/auth';
+import { generateSsoToken } from '../utils/sso';
 
 const router = Router();
 
@@ -60,15 +60,14 @@ router.post('/token', requireAuth, async (req: Request, res: Response) => {
 
   const groups = await getLdapGroups(req.session.username!);
 
-  const payload = JSON.stringify({
-    username: req.session.username,
-    groups,
-    is_admin: req.session.role === 'admin',
-    exp: Date.now() + 30000, // 30 seconds
-  });
-
-  const signature = crypto.createHmac('sha256', SSO_SECRET).update(payload).digest('hex');
-  const token = Buffer.from(payload).toString('base64url') + '.' + signature;
+  const token = generateSsoToken(
+    {
+      username: req.session.username!,
+      groups,
+      is_admin: req.session.role === 'admin',
+    },
+    SSO_SECRET,
+  );
 
   return res.json({ token });
 });

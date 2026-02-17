@@ -11,7 +11,7 @@ Lab 2312 實驗室入口網站 — 類 Cockpit 風格的綜合管理平台。
 - **成員名冊** — 查看實驗室活躍成員清單
 - **VPN 管理** — 透過 SSO 一鍵跳轉至 WireGuard Portal
 - **變更密碼** — 支援 FreeIPA 與 PAM 密碼變更
-- **監控頁面** — 預留頁面（Coming Soon）
+- **系統監控** — 即時 CPU / 記憶體 / GPU / 硬碟 / 網路監控 Dashboard（chart.js）
 
 ### 管理員
 - **邀請管理** — 產生一次性註冊連結（含到期時間、使用次數限制）
@@ -21,6 +21,7 @@ Lab 2312 實驗室入口網站 — 類 Cockpit 風格的綜合管理平台。
 - **使用者管理** — 角色切換、停用帳號，變更同步至 FreeIPA
 - **信件模板** — 自訂審核通過通知信模板，支援測試寄送
 - **網站品牌** — 自訂網站名稱與 Logo
+- **監控節點管理** — 註冊/設定/刪除 exporter 節點、排序、重設 token
 - **稽核紀錄** — 所有操作的完整 audit log
 
 ---
@@ -55,9 +56,8 @@ lab2312-website/
 ├── docker/
 │   ├── Dockerfile.backend      # Node.js backend image（含 SSSD/PAM）
 │   ├── Dockerfile.frontend     # Vite build + Caddy image
-│   ├── Caddyfile               # Caddyfile 範本
-│   └── caddy-conf/
-│       └── Caddyfile           # 實際運行的 Caddyfile（volume mount）
+│   ├── Caddyfile               # Caddyfile 預設範本（首次部署自動複製至 volume）
+│   └── caddy-entrypoint.sh    # Caddy 容器 entrypoint
 ├── backend/
 │   ├── .env                    # 後端環境變數（LDAP、SMTP、SSO...）
 │   ├── .env.example
@@ -69,7 +69,7 @@ lab2312-website/
 │       ├── db/
 │       │   └── schema.ts       # SQLite schema + seed data
 │       ├── middlewares/
-│       │   └── auth.ts         # requireAuth / requireAdmin middleware
+│       │   └── auth.ts         # requireAuth / requireAdmin / requireNodeToken
 │       ├── routes/
 │       │   ├── auth.ts         # 登入 / 登出 / /me / 變更密碼
 │       │   ├── register.ts     # 註冊申請 + 管理員審核
@@ -81,11 +81,28 @@ lab2312-website/
 │       │   ├── audit.ts        # 稽核紀錄
 │       │   ├── sso.ts          # SSO token 產生（HMAC-SHA256）
 │       │   ├── caddy.ts        # Caddy proxy 規則管理 + Caddyfile CRUD
+│       │   ├── monitoring.ts   # 監控 exporter 註冊 / config / report / admin CRUD
 │       │   ├── settings.ts     # 系統設定 + 品牌 + 測試寄信
 │       │   └── terminal.ts     # WebSocket SSH Terminal
-│       └── utils/
-│           ├── freeipa.ts      # FreeIPA JSON-RPC API client
-│           └── mailer.ts       # Email 發送（模板渲染）
+│       ├── services/
+│       │   └── monitorStore.ts # 監控資料 in-memory store（120 點歷史）
+│       ├── utils/
+│       │   ├── freeipa.ts      # FreeIPA JSON-RPC API client
+│       │   ├── mailer.ts       # Email 發送（模板渲染）
+│       │   ├── settings.ts     # 設定快取（60s TTL）
+│       │   ├── password.ts     # 安全密碼產生
+│       │   ├── sso.ts          # SSO token 簽章 / 驗證
+│       │   └── caddyfile.ts    # Caddyfile 生成 + 驗證
+│       └── __tests__/          # 單元測試（Vitest）
+│           ├── monitorStore.test.ts
+│           ├── settingsCache.test.ts
+│           ├── ssoToken.test.ts
+│           ├── authMiddleware.test.ts
+│           ├── generatePassword.test.ts
+│           ├── caddyGenerate.test.ts
+│           ├── mailerTemplate.test.ts
+│           ├── monitoring.test.ts
+│           └── register.test.ts
 └── frontend/
     ├── package.json
     ├── vite.config.ts
@@ -258,7 +275,7 @@ cd frontend && npm run dev   # port 5173
 |-----------|---------------|------|
 | `./volume/db` | `/data` | SQLite 資料庫 |
 | `./volume/uploads` | `/data/uploads` | 上傳檔案 |
-| `./docker/caddy-conf` | `/etc/caddy` | Caddyfile（backend + caddy 共享） |
+| `./volume/caddy-conf` | `/etc/caddy` | Caddyfile（backend + caddy 共享） |
 | `./volume/caddy-data` | `/data` (caddy) | TLS 憑證 |
 | `/var/run/docker.sock` | `/var/run/docker.sock` | Docker API（Caddy 管理用） |
 
@@ -408,6 +425,8 @@ AuthorizedKeysCommandUser nobody
 | GET | `/api/docs/:slug` | 閱讀文件 |
 | GET | `/api/members` | 成員名冊 |
 | POST | `/api/sso/token` | 產生 SSO token |
+| GET | `/api/monitoring/nodes` | 取得所有監控節點即時數據 |
+| GET | `/api/monitoring/nodes/:id` | 取得單一節點詳細數據 |
 | WS | `/ws/terminal` | Web Terminal |
 
 ### 管理員
@@ -433,6 +452,11 @@ AuthorizedKeysCommandUser nobody
 | POST | `/api/admin/caddy/validate` | 驗證 Caddy 設定 |
 | POST | `/api/admin/caddy/reload` | 重載 Caddy |
 | POST | `/api/admin/caddy/fmt` | 格式化 Caddyfile |
+| GET | `/api/admin/monitoring/nodes` | 列出所有註冊節點 |
+| PUT | `/api/admin/monitoring/nodes/:id/config` | 更新節點監控設定 |
+| DELETE | `/api/admin/monitoring/nodes/:id` | 刪除節點 |
+| POST | `/api/admin/monitoring/nodes/:id/reset-token` | 重設節點 token |
+| PUT | `/api/admin/monitoring/nodes/reorder` | 節點排序 |
 
 ---
 
@@ -451,6 +475,8 @@ AuthorizedKeysCommandUser nobody
 | `audit_logs` | 稽核紀錄（actor, action, detail_json, ip） |
 | `settings` | 系統設定（key-value，品牌、信件模板等） |
 | `proxy_rules` | Caddy proxy 規則（domain, target, is_enabled） |
+| `monitor_nodes` | 監控節點（hostname, token, config, capabilities） |
+| `monitor_snapshots` | 節點最新快照（snapshot_json） |
 
 ---
 
@@ -468,12 +494,51 @@ AuthorizedKeysCommandUser nobody
 
 ---
 
+## 測試
+
+Backend 使用 [Vitest](https://vitest.dev/) 作為測試框架，共 9 個測試檔案、97 個測試案例。
+
+### 本地執行
+
+```bash
+cd backend
+npm install        # 首次需安裝依賴（含 vitest）
+npm test           # 執行所有測試（一次性）
+npm run test:watch # 監聽模式（修改檔案自動重跑）
+```
+
+### 測試涵蓋範圍
+
+| 測試檔案 | 涵蓋模組 | 案例數 |
+|----------|----------|--------|
+| `ssoToken.test.ts` | SSO HMAC 簽章、payload 結構、過期驗證 | 7 |
+| `authMiddleware.test.ts` | requireAuth / requireAdmin / requireNodeToken | 9 |
+| `generatePassword.test.ts` | 密碼長度、字元類型、排除易混淆字、隨機性 | 8 |
+| `monitorStore.test.ts` | 歷史累積、截斷 (120 點)、GPU/NIC 增減、stale offline | 13 |
+| `settingsCache.test.ts` | TTL 快取、invalidate、numeric 解析 | 8 |
+| `caddyGenerate.test.ts` | Caddyfile 生成、domain/target 驗證 | 20 |
+| `mailerTemplate.test.ts` | 信件模板變數替換 | 5 |
+| `monitoring.test.ts` | Snapshot 格式、secret 驗證邏輯、節點排序 | 16 |
+| `register.test.ts` | Invite token 驗證、註冊輸入驗證 | 11 |
+
+### CI
+
+GitHub Actions 在 push/PR 到 `master` 時自動執行（`.github/workflows/ci.yml`）：
+- **Backend**: `npm ci` → TypeScript 型別檢查 → `npm test`
+- **Frontend**: `npm ci` → Vue TypeScript 型別檢查 → `npm run build`
+
+---
+
 ## 常用指令
 
 ```bash
 # 開發
 cd backend && npm run dev      # 後端開發模式（自動重載）
 cd frontend && npm run dev     # 前端開發模式（HMR）
+
+# 測試
+cd backend && npm test         # 執行後端單元測試
+cd backend && npm run test:watch  # 測試監聽模式
 
 # 建置
 cd frontend && npm run build   # 前端打包至 dist/

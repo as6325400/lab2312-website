@@ -25,7 +25,7 @@ function getTransporter(): nodemailer.Transporter {
 }
 
 // 取得 email template 並替換變數
-function renderTemplate(
+export function renderTemplate(
   template: { subject: string; body: string },
   vars: Record<string, string>,
 ): { subject: string; body: string } {
