@@ -13,7 +13,7 @@ initStoreFromDb();
 
 // POST /api/monitoring/register — Exporter registers itself
 router.post('/register', (req: Request, res: Response) => {
-  const { hostname, capabilities } = req.body;
+  const { hostname, capabilities, secret } = req.body;
   if (!hostname || typeof hostname !== 'string') {
     return res.status(400).json({ error: 'hostname is required' });
   }
@@ -22,6 +22,14 @@ router.post('/register', (req: Request, res: Response) => {
   }
 
   const db = getDb();
+
+  // Verify registration secret
+  const secretRow = db.prepare("SELECT value FROM settings WHERE key = 'monitor_registration_secret'")
+    .get() as { value: string } | undefined;
+  const requiredSecret = secretRow?.value || '';
+  if (requiredSecret && requiredSecret !== secret) {
+    return res.status(403).json({ error: 'Invalid registration secret' });
+  }
   const existing = db.prepare('SELECT id FROM monitor_nodes WHERE hostname = ?')
     .get(hostname) as { id: number } | undefined;
 

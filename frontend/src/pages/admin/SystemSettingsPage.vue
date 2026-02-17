@@ -20,6 +20,7 @@ const sessionTimeout = ref(20)
 const terminalIdleTimeout = ref(30)
 const terminalMaxSessions = ref(2)
 const adminNotifyEmail = ref('')
+const monitorRegistrationSecret = ref('')
 
 // Sidebar Nav
 const navItems = ref<NavItem[]>([])
@@ -45,6 +46,7 @@ onMounted(async () => {
     terminalIdleTimeout.value = parseInt(systemRes.data.terminal_idle_timeout_minutes) || 30
     terminalMaxSessions.value = parseInt(systemRes.data.terminal_max_sessions) || 2
     adminNotifyEmail.value = systemRes.data.admin_notify_email || ''
+    monitorRegistrationSecret.value = systemRes.data.monitor_registration_secret || ''
   } catch {
     message.value = '載入設定失敗'
     messageType.value = 'error'
@@ -109,6 +111,7 @@ async function save() {
       api.put('/admin/settings/terminal_max_sessions', { value: String(terminalMaxSessions.value) }),
       api.put('/admin/settings/sidebar_nav', { value: JSON.stringify(navItems.value) }),
       api.put('/admin/settings/admin_notify_email', { value: adminNotifyEmail.value }),
+      api.put('/admin/settings/monitor_registration_secret', { value: monitorRegistrationSecret.value }),
     ])
     branding.update(siteName.value, siteLogo.value, siteFavicon.value)
     branding.sidebarNav = navItems.value.map(n => ({ ...n }))
@@ -308,6 +311,17 @@ async function save() {
             placeholder="admin@example.com"
           />
           <p class="text-xs text-gray-400 mt-1">有新註冊申請時通知此信箱。留空則寄到 SMTP 寄件帳號。</p>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">監控節點註冊密鑰</label>
+          <input
+            v-model="monitorRegistrationSecret"
+            type="text"
+            class="input-field font-mono"
+            placeholder="留空則不驗證"
+          />
+          <p class="text-xs text-gray-400 mt-1">Exporter 註冊時必須提供此密鑰（<code class="bg-gray-100 px-1 rounded">--secret</code>）。留空則允許任意註冊。</p>
         </div>
       </div>
     </template>

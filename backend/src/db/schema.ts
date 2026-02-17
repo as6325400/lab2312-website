@@ -209,6 +209,7 @@ Lab 管理員`,
     { key: 'session_timeout_minutes', value: '20' },
     { key: 'terminal_idle_timeout_minutes', value: '30' },
     { key: 'terminal_max_sessions', value: '2' },
+    { key: 'monitor_registration_secret', value: '' },
   ];
   for (const { key, value } of systemDefaults) {
     const existing = db.prepare("SELECT key FROM settings WHERE key = ?").get(key);
