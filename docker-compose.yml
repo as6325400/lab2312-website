@@ -21,7 +21,7 @@ services:
     volumes:
       - ./volume/db:/data
       - ./volume/uploads:/data/uploads
-      - ./docker/caddy-conf:/data/caddy
+      - ./volume/caddy-conf:/data/caddy
       - /var/run/docker.sock:/var/run/docker.sock
       - ${BASTION_KEY_PATH:-/etc/lab-portal/bastion_key}:/keys/bastion_key:ro
       # PAM/SSSD: mount host auth files and SSSD socket
@@ -47,7 +47,7 @@ services:
       - "${HTTP_PORT:-80}:80"
       - "${HTTPS_PORT:-443}:443"
     volumes:
-      - ./docker/caddy-conf:/etc/caddy
+      - ./volume/caddy-conf:/etc/caddy
       - ./volume/caddy-data:/data
     depends_on:
       - backend
