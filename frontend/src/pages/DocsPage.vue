@@ -2,6 +2,7 @@
 import { ref, inject, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import MarkdownIt from 'markdown-it'
+import markdownItAttrs from 'markdown-it-attrs'
 import api from '../composables/useApi'
 
 const route = useRoute()
@@ -12,10 +13,10 @@ const loading = ref(true)
 const error = ref('')
 
 const md = new MarkdownIt({
-  html: false,
+  html: true,
   linkify: true,
   typographer: true,
-})
+}).use(markdownItAttrs)
 
 async function fetchDoc() {
   loading.value = true

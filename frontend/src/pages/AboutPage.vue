@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import MarkdownIt from 'markdown-it'
+import markdownItAttrs from 'markdown-it-attrs'
 import { useBrandingStore } from '../stores/branding'
 import api from '../composables/useApi'
 
@@ -11,10 +12,10 @@ const loading = ref(true)
 const error = ref('')
 
 const md = new MarkdownIt({
-  html: false,
+  html: true,
   linkify: true,
   typographer: true,
-})
+}).use(markdownItAttrs)
 
 onMounted(async () => {
   if (!branding.loaded) branding.fetch()

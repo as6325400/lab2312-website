@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import MarkdownIt from 'markdown-it'
+import markdownItAttrs from 'markdown-it-attrs'
 import api from '../../composables/useApi'
 
 const slug = ref('lab-guide')
@@ -14,7 +15,7 @@ const dragOver = ref(false)
 const uploading = ref(false)
 const textareaRef = ref<HTMLTextAreaElement>()
 
-const md = new MarkdownIt({ html: false, linkify: true, typographer: true })
+const md = new MarkdownIt({ html: true, linkify: true, typographer: true }).use(markdownItAttrs)
 const renderedHtml = computed(() => md.render(markdown.value))
 
 async function fetchDoc() {
