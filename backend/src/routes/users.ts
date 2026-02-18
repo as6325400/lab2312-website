@@ -1,7 +1,9 @@
 import { Router, Request, Response } from 'express';
+import { execSync } from 'child_process';
 import { getDb } from '../db/schema';
 import { requireAdmin } from '../middlewares/auth';
-import { addIpaGroupMember, removeIpaGroupMember, disableIpaUser, enableIpaUser } from '../utils/freeipa';
+import { addIpaGroupMember, removeIpaGroupMember, disableIpaUser, enableIpaUser, deleteIpaUser } from '../utils/freeipa';
+import { authenticateLdap, authenticatePam } from './auth';
 
 const router = Router();
 
@@ -9,14 +11,14 @@ const router = Router();
 router.get('/', requireAdmin, (_req: Request, res: Response) => {
   const db = getDb();
   const users = db.prepare(
-    'SELECT id, username, display_name, email, role, source, is_active, created_at, last_login_at FROM users ORDER BY created_at DESC'
+    'SELECT id, username, display_name, email, role, source, is_active, is_hidden, created_at, last_login_at FROM users ORDER BY created_at DESC'
   ).all();
   return res.json(users);
 });
 
 // PATCH /api/admin/users/:id - Update user
 router.patch('/:id', requireAdmin, async (req: Request, res: Response) => {
-  const { role, is_active, display_name, email } = req.body;
+  const { role, is_active, is_hidden, display_name, email } = req.body;
   const db = getDb();
 
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id) as any;
@@ -63,6 +65,10 @@ router.patch('/:id', requireAdmin, async (req: Request, res: Response) => {
     updates.push('is_active = ?');
     values.push(is_active ? 1 : 0);
   }
+  if (is_hidden !== undefined) {
+    updates.push('is_hidden = ?');
+    values.push(is_hidden ? 1 : 0);
+  }
   if (display_name !== undefined) {
     updates.push('display_name = ?');
     values.push(display_name);
@@ -83,6 +89,92 @@ router.patch('/:id', requireAdmin, async (req: Request, res: Response) => {
   db.prepare(
     'INSERT INTO audit_logs (actor_user_id, action, detail_json, ip) VALUES (?, ?, ?, ?)'
   ).run(req.session.userId, 'update_user', JSON.stringify({ targetUserId: req.params.id, updates: req.body }), req.ip);
+
+  return res.json({ ok: true });
+});
+
+// DELETE /api/admin/users/:id - Delete user permanently
+router.delete('/:id', requireAdmin, async (req: Request, res: Response) => {
+  const { password } = req.body;
+  const db = getDb();
+
+  if (!password) {
+    return res.status(400).json({ error: '請輸入密碼' });
+  }
+
+  // Verify admin's own password
+  const admin = db.prepare('SELECT * FROM users WHERE id = ?').get(req.session.userId) as any;
+  if (!admin) {
+    return res.status(401).json({ error: '驗證失敗' });
+  }
+
+  let verified = false;
+  if (admin.source === 'ldap') {
+    verified = await authenticateLdap(admin.username, password);
+  } else {
+    verified = await authenticatePam(admin.username, password);
+  }
+  if (!verified) {
+    return res.status(403).json({ error: '密碼錯誤' });
+  }
+
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id) as any;
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+
+  // Prevent self-deletion
+  if (user.id === req.session.userId) {
+    return res.status(400).json({ error: '不能刪除自己的帳號' });
+  }
+
+  // Delete FreeIPA account for LDAP users (ignore "not found" errors)
+  if (user.source === 'ldap') {
+    try {
+      await deleteIpaUser(user.username);
+    } catch (err: any) {
+      const msg = err.message || '';
+      if (msg.includes('not found')) {
+        console.warn('FreeIPA user already gone:', msg);
+      } else {
+        console.error('FreeIPA user deletion failed:', msg);
+        return res.status(500).json({ error: 'FreeIPA 帳號刪除失敗: ' + msg });
+      }
+    }
+  }
+
+  // Delete home directory via SSH to bastion
+  const bastionHost = process.env.BASTION_HOST;
+  const bastionKey = process.env.BASTION_PRIVATE_KEY_PATH;
+  if (bastionHost && bastionKey) {
+    try {
+      const safeUsername = user.username.replace(/[^a-zA-Z0-9._-]/g, '');
+      execSync(
+        `ssh -i ${bastionKey} -o StrictHostKeyChecking=no root@${bastionHost} "rm -rf /home/${safeUsername}"`,
+        { timeout: 15000 },
+      );
+    } catch (err: any) {
+      console.error('Home directory deletion failed:', err.message);
+      // Continue with DB deletion even if home dir removal fails
+    }
+  }
+
+  // Audit first (before deleting the user record)
+  db.prepare(
+    'INSERT INTO audit_logs (actor_user_id, action, detail_json, ip) VALUES (?, ?, ?, ?)'
+  ).run(req.session.userId, 'delete_user', JSON.stringify({ username: user.username, source: user.source }), req.ip);
+
+  // Nullify foreign key references before deleting user
+  db.prepare('UPDATE audit_logs SET actor_user_id = NULL WHERE actor_user_id = ?').run(user.id);
+  db.prepare('UPDATE uploads SET created_by = NULL WHERE created_by = ?').run(user.id);
+  db.prepare('UPDATE doc_versions SET created_by = NULL WHERE created_by = ?').run(user.id);
+  db.prepare('UPDATE invites SET created_by = NULL WHERE created_by = ?').run(user.id);
+  db.prepare('UPDATE registration_requests SET reviewed_by = NULL WHERE reviewed_by = ?').run(user.id);
+  db.prepare('UPDATE proxy_rules SET created_by = NULL WHERE created_by = ?').run(user.id);
+
+  // Delete from DB
+  db.prepare("DELETE FROM registration_requests WHERE desired_username = ? AND status = 'approved'").run(user.username);
+  db.prepare('DELETE FROM users WHERE id = ?').run(user.id);
 
   return res.json({ ok: true });
 });

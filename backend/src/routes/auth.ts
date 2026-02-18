@@ -128,7 +128,7 @@ router.get('/me', (req: Request, res: Response) => {
 });
 
 // LDAP authentication
-async function authenticateLdap(username: string, password: string): Promise<boolean> {
+export async function authenticateLdap(username: string, password: string): Promise<boolean> {
   const ldapUrl = process.env.LDAP_URL;
   const baseDn = process.env.LDAP_BASE_DN;
   if (!ldapUrl || !baseDn) {
@@ -168,7 +168,7 @@ async function authenticateLdap(username: string, password: string): Promise<boo
 
 // PAM authentication via unix_chkpwd
 // unix_chkpwd 是 PAM 內建的密碼驗證工具，即使以 root 執行也會正確驗證 /etc/shadow
-async function authenticatePam(username: string, password: string): Promise<boolean> {
+export async function authenticatePam(username: string, password: string): Promise<boolean> {
   const { spawn } = require('child_process');
 
   return new Promise((resolve) => {

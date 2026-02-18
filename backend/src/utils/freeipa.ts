@@ -137,6 +137,12 @@ export async function removeIpaGroupMember(groupName: string, username: string):
   await ipaRpc(session, 'group_remove_member', [groupName], { user: [username] });
 }
 
+/** Delete a FreeIPA user account permanently */
+export async function deleteIpaUser(username: string): Promise<void> {
+  const session = await getAdminSession();
+  await ipaRpc(session, 'user_del', [username]);
+}
+
 /** Disable a FreeIPA user account */
 export async function disableIpaUser(username: string): Promise<void> {
   const session = await getAdminSession();

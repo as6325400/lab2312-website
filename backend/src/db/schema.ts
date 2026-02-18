@@ -136,6 +136,11 @@ function initSchema(db: Database.Database) {
     db.exec("ALTER TABLE monitor_nodes ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0");
   }
 
+  const userCols = db.prepare("PRAGMA table_info(users)").all() as { name: string }[];
+  if (!userCols.find(c => c.name === 'is_hidden')) {
+    db.exec("ALTER TABLE users ADD COLUMN is_hidden INTEGER NOT NULL DEFAULT 0");
+  }
+
   // Seed default admin if no users exist
   const count = db.prepare('SELECT COUNT(*) as cnt FROM users').get() as { cnt: number };
   if (count.cnt === 0) {
