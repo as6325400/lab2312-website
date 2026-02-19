@@ -43,7 +43,12 @@ async function fetchUsers() {
 
 async function toggleActive(user: any) {
   closeMenu()
-  await api.patch(`/admin/users/${user.id}`, { is_active: !user.is_active })
+  try {
+    await api.patch(`/admin/users/${user.id}`, { is_active: !user.is_active })
+  } catch (e: any) {
+    alert(e.response?.data?.error || '狀態變更失敗')
+    return
+  }
   await fetchUsers()
 }
 
@@ -51,13 +56,23 @@ async function toggleRole(user: any) {
   closeMenu()
   const newRole = user.role === 'admin' ? 'user' : 'admin'
   if (!confirm(`確定要將 ${user.username} 的角色改為 ${newRole}？`)) return
-  await api.patch(`/admin/users/${user.id}`, { role: newRole })
+  try {
+    await api.patch(`/admin/users/${user.id}`, { role: newRole })
+  } catch (e: any) {
+    alert(e.response?.data?.error || '角色變更失敗')
+    return
+  }
   await fetchUsers()
 }
 
 async function toggleHidden(user: any) {
   closeMenu()
-  await api.patch(`/admin/users/${user.id}`, { is_hidden: !user.is_hidden })
+  try {
+    await api.patch(`/admin/users/${user.id}`, { is_hidden: !user.is_hidden })
+  } catch (e: any) {
+    alert(e.response?.data?.error || '變更失敗')
+    return
+  }
   await fetchUsers()
 }
 

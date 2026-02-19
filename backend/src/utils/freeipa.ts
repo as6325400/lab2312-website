@@ -128,13 +128,30 @@ export async function createIpaUser(opts: {
 /** Add a user to a FreeIPA group */
 export async function addIpaGroupMember(groupName: string, username: string): Promise<void> {
   const session = await getAdminSession();
-  await ipaRpc(session, 'group_add_member', [groupName], { user: [username] });
+  const result = await ipaRpc(session, 'group_add_member', [groupName], { user: [username] });
+  checkGroupMemberResult(result, 'add', groupName, username);
 }
 
 /** Remove a user from a FreeIPA group */
 export async function removeIpaGroupMember(groupName: string, username: string): Promise<void> {
   const session = await getAdminSession();
-  await ipaRpc(session, 'group_remove_member', [groupName], { user: [username] });
+  const result = await ipaRpc(session, 'group_remove_member', [groupName], { user: [username] });
+  checkGroupMemberResult(result, 'remove', groupName, username);
+}
+
+/** Check group_add_member / group_remove_member result for silent failures */
+function checkGroupMemberResult(
+  result: any,
+  action: string,
+  groupName: string,
+  username: string,
+): void {
+  if (!result) return;
+  const failedUsers: string[][] = result.failed?.member?.user;
+  if (failedUsers && failedUsers.length > 0) {
+    const reason = failedUsers[0][1] || 'unknown error';
+    throw new Error(`Failed to ${action} ${username} in group ${groupName}: ${reason}`);
+  }
 }
 
 /** Delete a FreeIPA user account permanently */
