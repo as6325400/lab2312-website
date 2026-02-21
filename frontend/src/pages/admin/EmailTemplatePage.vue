@@ -10,6 +10,8 @@ const message = ref('')
 const messageType = ref<'success' | 'error'>('success')
 const testEmail = ref('')
 const sending = ref(false)
+const testAttachments = ref<File[]>([])
+const testFileInput = ref<HTMLInputElement | null>(null)
 
 const variables = [
   { key: '{{name}}', desc: '姓名' },
@@ -64,6 +66,25 @@ async function save() {
   }
 }
 
+function onTestFilesSelected(e: Event) {
+  const input = e.target as HTMLInputElement
+  if (!input.files) return
+  const newFiles = Array.from(input.files)
+  const remaining = 5 - testAttachments.value.length
+  testAttachments.value = [...testAttachments.value, ...newFiles.slice(0, remaining)]
+  input.value = ''
+}
+
+function removeTestFile(index: number) {
+  testAttachments.value = testAttachments.value.filter((_, i) => i !== index)
+}
+
+function formatSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
 async function sendTest() {
   if (!testEmail.value) {
     message.value = '請輸入收件人 Email'
@@ -73,7 +94,12 @@ async function sendTest() {
   sending.value = true
   message.value = ''
   try {
-    await api.post('/admin/settings/test-email', { to: testEmail.value })
+    const fd = new FormData()
+    fd.append('to', testEmail.value)
+    for (const file of testAttachments.value) {
+      fd.append('files', file)
+    }
+    await api.post('/admin/settings/test-email', fd)
     message.value = `測試信已寄出至 ${testEmail.value}`
     messageType.value = 'success'
   } catch (err: any) {
@@ -138,9 +164,9 @@ onMounted(fetchTemplate)
       </div>
 
       <!-- 測試寄信 -->
-      <div class="card">
-        <div class="text-sm font-medium text-gray-700 mb-3">測試寄信</div>
-        <p class="text-xs text-gray-400 mb-3">使用範例資料填入模板並寄出測試信，主旨會加上 [測試] 前綴。</p>
+      <div class="card space-y-3">
+        <div class="text-sm font-medium text-gray-700">測試寄信</div>
+        <p class="text-xs text-gray-400">使用範例資料填入模板並寄出測試信，主旨會加上 [測試] 前綴。</p>
         <div class="flex flex-col sm:flex-row gap-2">
           <input
             v-model="testEmail"
@@ -151,6 +177,41 @@ onMounted(fetchTemplate)
           <button @click="sendTest" class="btn-secondary text-sm whitespace-nowrap" :disabled="sending">
             {{ sending ? '寄送中...' : '寄送測試信' }}
           </button>
+        </div>
+
+        <!-- 附件 -->
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">附件（最多 5 個，每個上限 10 MB）</label>
+          <input
+            ref="testFileInput"
+            type="file"
+            multiple
+            class="hidden"
+            @change="onTestFilesSelected"
+          />
+          <button
+            v-if="testAttachments.length < 5"
+            @click="testFileInput?.click()"
+            class="btn-secondary text-xs"
+          >
+            選擇檔案
+          </button>
+          <ul v-if="testAttachments.length" class="mt-2 space-y-1">
+            <li
+              v-for="(file, i) in testAttachments"
+              :key="i"
+              class="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 text-sm"
+            >
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="i-carbon-attachment text-gray-400" />
+                <span class="truncate text-gray-700">{{ file.name }}</span>
+                <span class="text-xs text-gray-400 shrink-0">{{ formatSize(file.size) }}</span>
+              </div>
+              <button @click="removeTestFile(i)" class="text-red-400 hover:text-red-600 shrink-0 ml-2">
+                <span class="i-carbon-close text-sm" />
+              </button>
+            </li>
+          </ul>
         </div>
       </div>
     </template>

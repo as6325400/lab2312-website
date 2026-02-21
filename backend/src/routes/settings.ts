@@ -1,8 +1,14 @@
 import { Router, Request, Response } from 'express';
+import multer from 'multer';
 import nodemailer from 'nodemailer';
 import { getDb } from '../db/schema';
 import { requireAdmin } from '../middlewares/auth';
 import { invalidateSettingCache } from '../utils/settings';
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024, files: 5 },
+});
 
 const router = Router();
 
@@ -94,66 +100,78 @@ router.put('/:key', requireAdmin, (req: Request, res: Response) => {
   return res.json({ ok: true });
 });
 
-// POST /api/admin/settings/test-email - Send test email
-router.post('/test-email', requireAdmin, async (req: Request, res: Response) => {
-  const { to } = req.body;
+// POST /api/admin/settings/test-email - Send test email (with optional attachments)
+router.post('/test-email', requireAdmin, (req: Request, res: Response) => {
+  upload.array('files', 5)(req, res, async (uploadErr) => {
+    if (uploadErr) {
+      return res.status(400).json({ error: uploadErr.message });
+    }
 
-  if (!to || typeof to !== 'string') {
-    return res.status(400).json({ error: '請輸入收件人 Email' });
-  }
+    const to = req.body.to as string;
 
-  const host = process.env.SMTP_HOST;
-  const port = parseInt(process.env.SMTP_PORT || '587', 10);
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
+    if (!to || typeof to !== 'string') {
+      return res.status(400).json({ error: '請輸入收件人 Email' });
+    }
 
-  if (!host || !user || !pass) {
-    return res.status(400).json({ error: 'SMTP 尚未設定（請在 .env 設定 SMTP_HOST, SMTP_USER, SMTP_PASS）' });
-  }
+    const host = process.env.SMTP_HOST;
+    const port = parseInt(process.env.SMTP_PORT || '587', 10);
+    const user = process.env.SMTP_USER;
+    const pass = process.env.SMTP_PASS;
 
-  // Get email template
-  const db = getDb();
-  const row = db.prepare("SELECT value FROM settings WHERE key = 'approve_email'").get() as { value: string } | undefined;
-  if (!row) {
-    return res.status(400).json({ error: '信件模板尚未建立' });
-  }
+    if (!host || !user || !pass) {
+      return res.status(400).json({ error: 'SMTP 尚未設定（請在 .env 設定 SMTP_HOST, SMTP_USER, SMTP_PASS）' });
+    }
 
-  const template = JSON.parse(row.value) as { subject: string; body: string };
-  const siteUrl = process.env.SITE_URL || process.env.FRONTEND_URL || 'http://localhost:5173';
+    // Get email template
+    const db = getDb();
+    const row = db.prepare("SELECT value FROM settings WHERE key = 'approve_email'").get() as { value: string } | undefined;
+    if (!row) {
+      return res.status(400).json({ error: '信件模板尚未建立' });
+    }
 
-  // Replace with sample data
-  const sampleVars: Record<string, string> = {
-    name: '測試用戶',
-    username: 'testuser',
-    password: 'TestPass123',
-    url: siteUrl,
-  };
-  const replace = (str: string) =>
-    str.replace(/\{\{(\w+)\}\}/g, (_, key) => sampleVars[key] ?? '');
+    const template = JSON.parse(row.value) as { subject: string; body: string };
+    const siteUrl = process.env.SITE_URL || process.env.FRONTEND_URL || 'http://localhost:5173';
 
-  const subject = `[測試] ${replace(template.subject)}`;
-  const body = replace(template.body);
-  const from = process.env.SMTP_FROM || user || 'noreply@lab.local';
+    const sampleVars: Record<string, string> = {
+      name: '測試用戶',
+      username: 'testuser',
+      password: 'TestPass123',
+      url: siteUrl,
+    };
+    const replace = (str: string) =>
+      str.replace(/\{\{(\w+)\}\}/g, (_, key) => sampleVars[key] ?? '');
 
-  try {
-    const transport = nodemailer.createTransport({
-      host,
-      port,
-      secure: port === 465,
-      auth: { user, pass },
-    });
+    const subject = `[測試] ${replace(template.subject)}`;
+    const body = replace(template.body);
+    const from = process.env.SMTP_FROM || user || 'noreply@lab.local';
 
-    await transport.sendMail({ from, to, subject, text: body });
+    // Build attachments from uploaded files
+    const files = (req.files as Express.Multer.File[]) || [];
+    const attachments = files.map(f => ({
+      filename: f.originalname,
+      content: f.buffer,
+    }));
 
-    // Audit
-    db.prepare(
-      'INSERT INTO audit_logs (actor_user_id, action, detail_json, ip) VALUES (?, ?, ?, ?)'
-    ).run(req.session.userId, 'test_email', JSON.stringify({ to }), req.ip);
+    try {
+      const transport = nodemailer.createTransport({
+        host,
+        port,
+        secure: port === 465,
+        auth: { user, pass },
+      });
 
-    return res.json({ ok: true });
-  } catch (err: any) {
-    return res.status(500).json({ error: `寄信失敗：${err.message}` });
-  }
+      await transport.sendMail({ from, to, subject, text: body, attachments });
+
+      // Audit
+      db.prepare(
+        'INSERT INTO audit_logs (actor_user_id, action, detail_json, ip) VALUES (?, ?, ?, ?)'
+      ).run(req.session.userId, 'test_email', JSON.stringify({ to, attachmentCount: attachments.length }), req.ip);
+
+      return res.json({ ok: true });
+    } catch (err: any) {
+      return res.status(500).json({ error: `寄信失敗：${err.message}` });
+    }
+  });
 });
 
 export default router;

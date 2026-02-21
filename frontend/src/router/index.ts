@@ -109,6 +109,12 @@ const router = createRouter({
           meta: { requiresAdmin: true },
         },
         {
+          path: 'admin/announce',
+          name: 'admin-announce',
+          component: () => import('../pages/admin/AnnouncePage.vue'),
+          meta: { requiresAdmin: true },
+        },
+        {
           path: 'admin/monitoring',
           name: 'admin-monitoring',
           component: () => import('../pages/admin/MonitoringNodesPage.vue'),

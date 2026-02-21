@@ -42,6 +42,7 @@ const adminNav = [
   { label: '註冊審核', to: '/admin/requests', icon: 'i-carbon-user-follow' },
   { label: '文件編輯', to: '/admin/docs', icon: 'i-carbon-edit' },
   { label: 'Proxy 管理', to: '/admin/caddy', icon: 'i-carbon-cloud-app' },
+  { label: '公告信件', to: '/admin/announce', icon: 'i-carbon-send-alt' },
   { label: '信件模板', to: '/admin/email-template', icon: 'i-carbon-email-new' },
   { label: '使用者管理', to: '/admin/users', icon: 'i-carbon-group' },
   { label: '節點管理', to: '/admin/monitoring', icon: 'i-carbon-network-4' },
