@@ -62,6 +62,7 @@ brandingRouter.get('/', (_req: Request, res: Response) => {
     { label: 'Monitoring', to: '/monitoring', icon: 'i-carbon-dashboard' },
     { label: '成員名冊', to: '/members', icon: 'i-carbon-group' },
     { label: 'VPN 管理', to: 'vpn', icon: 'i-carbon-vpn' },
+    { label: 'Outline Wiki', to: 'outline', icon: 'i-carbon-notebook' },
   ];
   if (navRow?.value) {
     try { sidebarNav = JSON.parse(navRow.value); } catch {}

@@ -41,6 +41,7 @@ services:
       dockerfile: docker/Dockerfile.frontend
       args:
         - VITE_VPN_URL=${VPN_URL}
+        - VITE_OUTLINE_URL=${OUTLINE_URL}
     environment:
       - DASHBOARD_DOMAIN=${DASHBOARD_DOMAIN}
     ports:

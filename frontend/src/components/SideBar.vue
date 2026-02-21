@@ -14,6 +14,7 @@ const auth = useAuthStore()
 const branding = useBrandingStore()
 
 const VPN_URL = import.meta.env.VITE_VPN_URL || ''
+const OUTLINE_URL = import.meta.env.VITE_OUTLINE_URL || ''
 
 onMounted(() => {
   if (!branding.loaded) branding.fetch()
@@ -30,6 +31,19 @@ async function openVpn() {
     const { data } = await api.post('/sso/token')
     if (win) {
       win.location.href = `${VPN_URL}/api/sso/callback?token=${encodeURIComponent(data.token)}`
+    }
+  } catch {
+    win?.close()
+    alert('無法產生 SSO token')
+  }
+}
+
+async function openOutline() {
+  const win = window.open('', '_blank')
+  try {
+    const { data } = await api.post('/sso/outline-token')
+    if (win) {
+      win.location.href = `${OUTLINE_URL}/auth/ldap.sso?token=${encodeURIComponent(data.token)}&client=web`
     }
   } catch {
     win?.close()
@@ -99,6 +113,16 @@ const isActive = (path: string) => {
             <span :class="item.icon" class="text-lg" />
             {{ item.label }}
           </a>
+          <!-- Outline: SSO handler -->
+          <a
+            v-else-if="item.to === 'outline' && OUTLINE_URL"
+            href="#"
+            @click.prevent="openOutline"
+            class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+          >
+            <span :class="item.icon" class="text-lg" />
+            {{ item.label }}
+          </a>
           <!-- External link -->
           <a
             v-else-if="item.to.startsWith('http://') || item.to.startsWith('https://')"
@@ -112,7 +136,7 @@ const isActive = (path: string) => {
           </a>
           <!-- Internal route link -->
           <router-link
-            v-else-if="item.to !== 'vpn'"
+            v-else-if="item.to !== 'vpn' && item.to !== 'outline'"
             :to="item.to"
             class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors"
             :class="isActive(item.to)
