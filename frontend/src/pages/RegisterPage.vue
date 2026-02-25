@@ -31,7 +31,27 @@ onMounted(async () => {
   }
 })
 
+const usernameError = ref('')
+
+function validateUsername() {
+  const v = form.value.username
+  if (!v) { usernameError.value = ''; return }
+  if (!/^[a-z_]/.test(v)) {
+    usernameError.value = '必須以小寫英文字母或底線開頭'
+  } else if (/[A-Z]/.test(v)) {
+    usernameError.value = '不可包含大寫字母'
+  } else if (!/^[a-z0-9_-]+$/.test(v)) {
+    usernameError.value = '只能包含小寫英文、數字、底線、連字號'
+  } else if (v.length > 32) {
+    usernameError.value = '最多 32 個字元'
+  } else {
+    usernameError.value = ''
+  }
+}
+
 async function handleSubmit() {
+  validateUsername()
+  if (usernameError.value) return
   error.value = ''
   loading.value = true
   try {
@@ -79,7 +99,9 @@ async function handleSubmit() {
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">希望的帳號 (username) *</label>
-          <input v-model="form.username" type="text" class="input-field" pattern="[a-z][a-z0-9_-]*" title="小寫英文開頭，可含數字、底線、連字號" required />
+          <input v-model="form.username" type="text" class="input-field" @input="validateUsername" autocomplete="off" required />
+          <p v-if="usernameError" class="text-xs text-red-500 mt-1">{{ usernameError }}</p>
+          <p v-else class="text-xs text-gray-400 mt-1">小寫英文或底線開頭，可含數字、底線、連字號，最多 32 字元</p>
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">學號 *</label>

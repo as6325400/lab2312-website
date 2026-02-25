@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { execSync } from 'child_process';
 import { getDb } from '../db/schema';
 import { requireAdmin } from '../middlewares/auth';
-import { addIpaGroupMember, removeIpaGroupMember, disableIpaUser, enableIpaUser, deleteIpaUser } from '../utils/freeipa';
+import { addIpaGroupMember, removeIpaGroupMember, disableIpaUser, enableIpaUser, deleteIpaUser, updateIpaUser } from '../utils/freeipa';
 import { authenticateLdap, authenticatePam } from './auth';
 
 const router = Router();
@@ -11,19 +11,32 @@ const router = Router();
 router.get('/', requireAdmin, (_req: Request, res: Response) => {
   const db = getDb();
   const users = db.prepare(
-    'SELECT id, username, display_name, email, role, source, is_active, is_hidden, created_at, last_login_at FROM users ORDER BY created_at DESC'
+    'SELECT id, username, student_id, display_name, email, role, source, is_active, is_hidden, created_at, last_login_at FROM users ORDER BY created_at DESC'
   ).all();
   return res.json(users);
 });
 
+const USERNAME_REGEX = /^[a-z_][a-z0-9_-]{0,30}$/;
+
 // PATCH /api/admin/users/:id - Update user
 router.patch('/:id', requireAdmin, async (req: Request, res: Response) => {
-  const { role, is_active, is_hidden, display_name, email } = req.body;
+  const { role, is_active, is_hidden, display_name, email, username, student_id } = req.body;
   const db = getDb();
 
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id) as any;
   if (!user) {
     return res.status(404).json({ error: 'User not found' });
+  }
+
+  // Validate and handle username rename
+  if (username !== undefined && username !== user.username) {
+    if (!USERNAME_REGEX.test(username)) {
+      return res.status(400).json({ error: 'Username 只能以小寫英文或底線開頭，包含小寫英文、數字、底線、連字號，最多 32 字元' });
+    }
+    const existing = db.prepare('SELECT id FROM users WHERE username = ? AND id != ?').get(username, user.id);
+    if (existing) {
+      return res.status(409).json({ error: '帳號名稱已被使用' });
+    }
   }
 
   // Sync role change to FreeIPA admins group (for LDAP users)
@@ -54,6 +67,21 @@ router.patch('/:id', requireAdmin, async (req: Request, res: Response) => {
     }
   }
 
+  // Sync username/email/student_id to FreeIPA (for LDAP users)
+  const ipaUpdates: { newUsername?: string; email?: string; studentId?: string } = {};
+  if (username !== undefined && username !== user.username) ipaUpdates.newUsername = username;
+  if (email !== undefined && email !== user.email) ipaUpdates.email = email;
+  if (student_id !== undefined && student_id !== user.student_id) ipaUpdates.studentId = student_id;
+
+  if (user.source === 'ldap' && Object.keys(ipaUpdates).length > 0) {
+    try {
+      await updateIpaUser(user.username, ipaUpdates);
+    } catch (err: any) {
+      console.error('FreeIPA user update failed:', err.message);
+      return res.status(500).json({ error: 'FreeIPA 帳號更新失敗: ' + err.message });
+    }
+  }
+
   const updates: string[] = [];
   const values: any[] = [];
 
@@ -77,6 +105,14 @@ router.patch('/:id', requireAdmin, async (req: Request, res: Response) => {
     updates.push('email = ?');
     values.push(email);
   }
+  if (username !== undefined) {
+    updates.push('username = ?');
+    values.push(username);
+  }
+  if (student_id !== undefined) {
+    updates.push('student_id = ?');
+    values.push(student_id);
+  }
 
   if (updates.length === 0) {
     return res.status(400).json({ error: 'No valid fields to update' });
@@ -84,6 +120,13 @@ router.patch('/:id', requireAdmin, async (req: Request, res: Response) => {
 
   values.push(req.params.id);
   db.prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`).run(...values);
+
+  // If username changed, sync registration_requests table
+  if (username !== undefined && username !== user.username) {
+    db.prepare(
+      "UPDATE registration_requests SET desired_username = ? WHERE desired_username = ? AND status = 'approved'"
+    ).run(username, user.username);
+  }
 
   // Audit
   db.prepare(

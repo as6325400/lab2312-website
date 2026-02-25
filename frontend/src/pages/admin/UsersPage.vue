@@ -15,6 +15,59 @@ const deletePassword = ref('')
 const deleteError = ref('')
 const deleting = ref(false)
 
+// Edit modal state
+const showEditModal = ref(false)
+const editTarget = ref<any>(null)
+const editForm = ref({ username: '', student_id: '', email: '' })
+const editError = ref('')
+const editSaving = ref(false)
+const editUsernameError = ref('')
+
+function validateEditUsername() {
+  const v = editForm.value.username
+  if (!v) { editUsernameError.value = '帳號不可為空'; return }
+  if (!/^[a-z_]/.test(v)) {
+    editUsernameError.value = '必須以小寫英文字母或底線開頭'
+  } else if (/[A-Z]/.test(v)) {
+    editUsernameError.value = '不可包含大寫字母'
+  } else if (!/^[a-z0-9_-]+$/.test(v)) {
+    editUsernameError.value = '只能包含小寫英文、數字、底線、連字號'
+  } else if (v.length > 32) {
+    editUsernameError.value = '最多 32 個字元'
+  } else {
+    editUsernameError.value = ''
+  }
+}
+
+function openEditModal(user: any) {
+  closeMenu()
+  editTarget.value = user
+  editForm.value = { username: user.username, student_id: user.student_id || '', email: user.email || '' }
+  editError.value = ''
+  editUsernameError.value = ''
+  showEditModal.value = true
+}
+
+async function confirmEdit() {
+  validateEditUsername()
+  if (editUsernameError.value) return
+  editSaving.value = true
+  editError.value = ''
+  try {
+    await api.patch(`/admin/users/${editTarget.value.id}`, {
+      username: editForm.value.username,
+      student_id: editForm.value.student_id,
+      email: editForm.value.email,
+    })
+    showEditModal.value = false
+    await fetchUsers()
+  } catch (e: any) {
+    editError.value = e.response?.data?.error || '儲存失敗'
+  } finally {
+    editSaving.value = false
+  }
+}
+
 const totalCount = computed(() => users.value.length)
 const activeCount = computed(() => users.value.filter(u => u.is_active).length)
 const adminCount = computed(() => users.value.filter(u => u.role === 'admin').length)
@@ -183,6 +236,9 @@ onMounted(fetchUsers)
                   v-if="openMenuId === user.id"
                   class="absolute right-4 top-full mt-1 z-20 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[140px]"
                 >
+                  <button @click="openEditModal(user)" class="w-full text-left px-4 py-2 text-xs text-gray-700 hover:bg-gray-50">
+                    編輯資料
+                  </button>
                   <button @click="toggleRole(user)" class="w-full text-left px-4 py-2 text-xs text-gray-700 hover:bg-gray-50">
                     {{ user.role === 'admin' ? '降為 user' : '升為 admin' }}
                   </button>
@@ -203,6 +259,59 @@ onMounted(fetchUsers)
         </tbody>
       </table>
     </div>
+
+    <!-- Edit user modal -->
+    <Teleport to="body">
+      <div v-if="showEditModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" @click.self="showEditModal = false">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
+          <h3 class="text-lg font-semibold text-gray-900 mb-4">編輯使用者資料</h3>
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">帳號 (username)</label>
+              <input
+                v-model="editForm.username"
+                type="text"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                @input="validateEditUsername"
+                autocomplete="off"
+              />
+              <p v-if="editUsernameError" class="text-xs text-red-500 mt-1">{{ editUsernameError }}</p>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">學號</label>
+              <input
+                v-model="editForm.student_id"
+                type="text"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                autocomplete="off"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <input
+                v-model="editForm.email"
+                type="email"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                autocomplete="off"
+              />
+            </div>
+          </div>
+          <p v-if="editError" class="text-xs text-red-500 mt-3">{{ editError }}</p>
+          <div class="flex justify-end gap-3 mt-5">
+            <button @click="showEditModal = false" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">
+              取消
+            </button>
+            <button
+              @click="confirmEdit"
+              :disabled="!!editUsernameError || editSaving"
+              class="px-4 py-2 text-sm text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {{ editSaving ? '儲存中...' : '儲存' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
 
     <!-- Delete confirmation modal -->
     <Teleport to="body">

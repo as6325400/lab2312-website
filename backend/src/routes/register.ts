@@ -41,6 +41,11 @@ router.post('/', async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'token, name, email, and username are required' });
   }
 
+  const USERNAME_REGEX = /^[a-z_][a-z0-9_-]{0,30}$/;
+  if (!USERNAME_REGEX.test(username)) {
+    return res.status(400).json({ error: 'Username 只能以小寫英文或底線開頭，包含小寫英文、數字、底線、連字號，最多 32 字元，不可包含大寫字母' });
+  }
+
   const db = getDb();
 
   // Validate token
@@ -142,8 +147,8 @@ router.post('/:id/approve', requireAdmin, async (req: Request, res: Response) =>
 
   // Create portal user
   db.prepare(
-    'INSERT INTO users (username, display_name, email, role, source) VALUES (?, ?, ?, ?, ?)'
-  ).run(request.desired_username, request.name, request.email, role, 'ldap');
+    'INSERT INTO users (username, display_name, email, role, source, student_id) VALUES (?, ?, ?, ?, ?, ?)'
+  ).run(request.desired_username, request.name, request.email, role, 'ldap', request.student_id || '');
 
   // Update request
   db.prepare(

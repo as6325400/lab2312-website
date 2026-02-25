@@ -140,6 +140,17 @@ function initSchema(db: Database.Database) {
   if (!userCols.find(c => c.name === 'is_hidden')) {
     db.exec("ALTER TABLE users ADD COLUMN is_hidden INTEGER NOT NULL DEFAULT 0");
   }
+  if (!userCols.find(c => c.name === 'student_id')) {
+    db.exec("ALTER TABLE users ADD COLUMN student_id TEXT NOT NULL DEFAULT ''");
+    // Backfill from approved registration requests
+    db.exec(`
+      UPDATE users SET student_id = (
+        SELECT rr.student_id FROM registration_requests rr
+        WHERE rr.desired_username = users.username AND rr.status = 'approved'
+        LIMIT 1
+      ) WHERE student_id = ''
+    `);
+  }
 
   // Seed default admin if no users exist
   const count = db.prepare('SELECT COUNT(*) as cnt FROM users').get() as { cnt: number };

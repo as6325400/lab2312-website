@@ -166,6 +166,27 @@ export async function disableIpaUser(username: string): Promise<void> {
   await ipaRpc(session, 'user_disable', [username]);
 }
 
+/** Update FreeIPA user fields (email, studentId) and optionally rename username */
+export async function updateIpaUser(
+  currentUsername: string,
+  opts: { newUsername?: string; email?: string; studentId?: string },
+): Promise<void> {
+  const session = await getAdminSession();
+  const updateOpts: Record<string, any> = {};
+  if (opts.email !== undefined) updateOpts.mail = opts.email;
+  if (opts.studentId !== undefined) updateOpts.employeenumber = opts.studentId;
+  if (opts.newUsername !== undefined) updateOpts.rename = opts.newUsername;
+  if (Object.keys(updateOpts).length > 0) {
+    try {
+      await ipaRpc(session, 'user_mod', [currentUsername], updateOpts);
+    } catch (err: any) {
+      // FreeIPA returns this error when nothing actually changed — not a real failure
+      if (err.message?.includes('no modifications to be performed')) return;
+      throw err;
+    }
+  }
+}
+
 /** Enable a FreeIPA user account */
 export async function enableIpaUser(username: string): Promise<void> {
   const session = await getAdminSession();
