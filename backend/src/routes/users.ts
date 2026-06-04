@@ -173,15 +173,26 @@ router.delete('/:id', requireAdmin, async (req: Request, res: Response) => {
 
   // Delete FreeIPA account for LDAP users (ignore "not found" errors)
   if (user.source === 'ldap') {
-    try {
-      await deleteIpaUser(user.username);
-    } catch (err: any) {
-      const msg = err.message || '';
-      if (msg.includes('not found')) {
-        console.warn('FreeIPA user already gone:', msg);
-      } else {
-        console.error('FreeIPA user deletion failed:', msg);
-        return res.status(500).json({ error: 'FreeIPA 帳號刪除失敗: ' + msg });
+    // Skip FreeIPA deletion if another user exists with the same username (case-insensitive).
+    // This prevents accidentally deleting the real FreeIPA account when removing a
+    // duplicate DB entry created by a case-variant login (e.g. "Pixeleston" vs "pixeleston").
+    const caseConflict = db.prepare(
+      'SELECT id FROM users WHERE LOWER(username) = LOWER(?) AND id != ?'
+    ).get(user.username, user.id);
+
+    if (caseConflict) {
+      console.warn(`Skipping FreeIPA deletion for ${user.username}: case-variant of an existing user`);
+    } else {
+      try {
+        await deleteIpaUser(user.username);
+      } catch (err: any) {
+        const msg = err.message || '';
+        if (msg.includes('not found') || msg.includes('admin login failed')) {
+          console.warn('FreeIPA user already gone or unreachable:', msg);
+        } else {
+          console.error('FreeIPA user deletion failed:', msg);
+          return res.status(500).json({ error: 'FreeIPA 帳號刪除失敗: ' + msg });
+        }
       }
     }
   }

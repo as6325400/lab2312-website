@@ -8,7 +8,8 @@ const router = Router();
 // POST /api/auth/login
 // 自動嘗試 LDAP → 失敗再嘗試 PAM，不需前端選擇
 router.post('/login', async (req: Request, res: Response) => {
-  const { username, password } = req.body;
+  const { username: rawUsername, password } = req.body;
+  const username = typeof rawUsername === 'string' ? rawUsername.toLowerCase() : rawUsername;
 
   console.log(`[Login] attempt: username=${username}`);
 
